@@ -91,6 +91,13 @@
   .end { text-align: center; }
   .end h3 { font-size: 26px; }
   .help { font-size: 14px; color: var(--muted); }
+  .events { grid-template-columns: repeat(auto-fill, minmax(min(280px, 100%), 1fr)); }
+  .event { border-color: var(--gold); }
+  .event h3 { margin: 0 0 4px; font-size: 16px; color: var(--gold2); display: flex; justify-content: space-between; gap: 8px; }
+  .event h3 .left { font-size: 12px; color: var(--muted); font-weight: 400; }
+  .event p { margin: 0 0 8px; font-size: 14px; }
+  .event .opts { display: flex; flex-direction: column; gap: 6px; }
+  .event .opts button { text-align: left; font-weight: 400; padding: 6px 10px; }
   .help li { margin-bottom: 4px; }
 </style>
 </head>
@@ -107,10 +114,14 @@
     <div class="stat">金幣<b id="sGold">0</b></div>
     <div class="stat">每日俸祿<b id="sWage">0</b></div>
     <div class="stat">已完成旨意<b id="sDone">0</b></div>
+    <div class="stat">赦免令<b id="sPardon">0</b></div>
   </div>
 
   <h2>蘇丹的旨意</h2>
   <div class="row" id="sultan"></div>
+
+  <h2>支線事件</h2>
+  <div class="grid events" id="events"></div>
 
   <h2>儀式（選擇一項並派出人手）</h2>
   <div class="grid" id="rites"></div>
@@ -141,6 +152,9 @@
       <li>儀式以擲骰判定：參與者對應屬性的總和就是骰子數，每顆骰子有一半機率成功，成功數達標即成功。</li>
       <li>每位門客每天只能參與一次儀式。門客每天要支付俸祿（銅 1、銀 2、金 3 金幣），付不出來就會離開。</li>
       <li>在酒館結識人物，靠經商賺錢，到市集購買裝備提升屬性。</li>
+      <li>城裡會隨機發生支線事件，有些會串成連續的故事：維齊爾的陰謀、公主的出逃、地下反抗軍、星盤之謎、沙漠商隊等。</li>
+      <li>赦免令可以讓你逃過一次旨意逾期的處決。</li>
+      <li>結局不只一種：倖存、處決，還有藏在支線裡的其他結局。</li>
     </ul>
     <div class="btns"><button id="btnHelpClose">開始</button></div>
   </div>
@@ -196,7 +210,7 @@
   function newGame() {
     nextId = 1;
     S = null;
-    S = { day: 1, gold: 12, people: [], sultan: [], done: 0, log: [], over: false };
+    S = { day: 1, gold: 12, people: [], sultan: [], done: 0, log: [], over: false, events: [], queue: [], flags: {}, pardon: 0 };
     S.people.push({ id: nextId++, name: '你', title: '蘇丹的寵臣', rank: 2, stats: { body: 3, charm: 3, wit: 3, stealth: 2 }, follower: true, busy: false, you: true });
     S.people.push(makePerson(1, true));
     S.people.push(makePerson(1, false));
@@ -224,14 +238,22 @@
       log(`第 ${week} 週。蘇丹賜下旨意：【${RANKS[card.rank]}・${TYPES[type].name}】。${TYPES[type].text}`, 'gold');
     }
     S.people.forEach(p => (p.busy = false));
+    spawnEvents();
     save();
     render();
   }
 
   function endDay() {
     if (S.over) return;
-    const failed = S.sultan.find(c => !c.done && c.deadline === S.day);
-    if (failed) return gameOver(false, `【${RANKS[failed.rank]}・${TYPES[failed.type].name}】的期限已到。侍衛把你拖到廣場，蘇丹打了個呵欠。`);
+    for (const failed of S.sultan.filter(c => !c.done && c.deadline <= S.day)) {
+      if (S.pardon > 0) {
+        S.pardon--;
+        failed.done = true;
+        log(`【${RANKS[failed.rank]}・${TYPES[failed.type].name}】的期限已到。你呈上赦免令，蘇丹撇撇嘴放過了你。`, 'gold');
+        continue;
+      }
+      return ending(false, '處決', `【${RANKS[failed.rank]}・${TYPES[failed.type].name}】的期限已到。侍衛把你拖到廣場，蘇丹打了個呵欠。`);
+    }
     // Wages
     for (const p of S.people.filter(p => p.follower && !p.you)) {
       const wage = WAGE[p.rank];
@@ -242,10 +264,10 @@
         log(`付不出俸祿，${p.name}（${p.title}）離你而去。`, 'bad');
       }
     }
-    if (S.day >= LAST_DAY) return gameOver(true, '八週過去，蘇丹厭倦了這個遊戲。你活了下來——至少現在是。');
+    if (S.day >= LAST_DAY) return ending(true, '倖存', '八週過去，蘇丹厭倦了這個遊戲。你活了下來——至少現在是。');
     S.day++;
     // Townsfolk drift in and out.
-    const npcs = S.people.filter(p => !p.follower);
+    const npcs = S.people.filter(p => !p.follower && !p.quest);
     if (npcs.length > 3 && Math.random() < 0.3) {
       const gone = pick(npcs);
       S.people = S.people.filter(p => p !== gone);
@@ -254,12 +276,16 @@
     startDay();
   }
 
-  function gameOver(win, text) {
+  function ending(win, title, text) {
     S.over = true;
-    log(text, win ? 'good' : 'bad');
+    log(`結局【${title}】${text}`, win ? 'good' : 'bad');
+    try {
+      const seen = JSON.parse(localStorage.getItem('sultan.endings') || '[]');
+      if (!seen.includes(title)) localStorage.setItem('sultan.endings', JSON.stringify(seen.concat(title)));
+    } catch (e) {}
     save();
     render();
-    $('ritemodal').innerHTML = `<div class="end"><h3>${win ? '倖存' : '處決'}</h3><p>${text}</p>
+    $('ritemodal').innerHTML = `<div class="end"><h3>結局：${title}</h3><p>${text}</p>
       <p>你完成了 ${S.done} 道旨意，撐到第 ${S.day} 天。</p><div class="btns" style="justify-content:center">
       <button id="btnAgain">再玩一次</button></div></div>`;
     $('ritebox').classList.add('show');
@@ -289,6 +315,314 @@
   function roll(n) { let s = 0; for (let i = 0; i < n; i++) if (Math.random() < 0.5) s++; return s; }
   const dice = (ps, attr) => ps.reduce((s, p) => s + p.stats[attr], 0);
   const label = p => `${p.name}（${RANKS[p.rank]}・${p.title}）`;
+
+  // ---- Side stories: random events and multi-step quest chains ----
+  // A choice with a check is rolled by your three best idle followers in that
+  // attribute; they count as having acted today.
+  const bestGroup = attr => S.people.filter(p => p.follower && !p.busy).sort((a, b) => b.stats[attr] - a.stats[attr]).slice(0, 3);
+  function test(attr, need) {
+    const ps = bestGroup(attr);
+    const s = roll(dice(ps, attr));
+    ps.forEach(p => (p.busy = true));
+    log(`${ps.map(p => p.name).join('、') || '無人'}進行${ATTRS[attr]}判定，擲出 ${s} 次成功（需要 ${need}）。`);
+    return s >= need;
+  }
+  const week = () => Math.ceil(S.day / 7);
+  const others = () => S.people.filter(p => p.follower && !p.you);
+  function loseFollower(reason) {
+    const v = pick(others());
+    if (!v) return log('幸好你身邊已經沒有人可以失去了。');
+    S.people = S.people.filter(p => p !== v);
+    log(`${label(v)}${reason}`, 'bad');
+  }
+  function addFollower(rank, title, name) {
+    const p = makePerson(rank, true);
+    if (title) p.title = title;
+    if (name) p.name = name;
+    S.people.push(p);
+    log(`${label(p)}成為你的門客。`, 'good');
+    return p;
+  }
+  function schedule(key, days) {
+    if (S.day + days <= LAST_DAY) S.queue.push({ key, day: S.day + days });
+  }
+  function extraOrder(days) {
+    const type = pick(Object.keys(TYPES));
+    const card = { id: nextId++, type, rank: Math.max(1, sultanRank(week()) - 1), deadline: Math.min(S.day + days, LAST_DAY), done: false };
+    S.sultan.push(card);
+    log(`蘇丹起了疑心，追加一道旨意：【${RANKS[card.rank]}・${TYPES[type].name}】，限 ${days} 天內完成。`, 'bad');
+  }
+  function pardon(n = 1) {
+    S.pardon += n;
+    log(`你得到 ${n} 張蘇丹的赦免令。它能讓你逃過一次處決。`, 'gold');
+  }
+
+  const EVENTS = {
+    beggar: {
+      title: '老乞丐', text: '一個衣衫襤褸的老人攔住你：「大人，賞口飯吃吧。」他的眼神卻清明得不像乞丐。',
+      options: () => [
+        { label: '施捨他', cost: 2, run() {
+          if (Math.random() < 0.35) { log('老人笑了：「你心腸不壞。」他掀開破布，露出學者的徽記。', 'good'); addFollower(3, '隱士'); }
+          else log('老人連聲道謝，消失在人群中。');
+        } },
+        { label: '趕走他', run() { log('老人搖搖頭，轉身離去。'); } },
+      ],
+    },
+    caravan: {
+      title: '沙漠商隊', once: true, text: '一支要穿越大沙海的商隊正在募集資金。若能平安歸來，回報豐厚。',
+      options: () => [
+        { label: '投資', cost: 10, run() { S.flags.caravan = true; schedule('caravanBack', 4); log('你把金幣交給了商隊首領。駱駝鈴聲漸行漸遠。'); } },
+        { label: '不感興趣', run() {} },
+      ],
+    },
+    caravanBack: {
+      title: '商隊的消息', text: '城門外揚起沙塵，商隊的消息傳回來了。',
+      options: () => [{ label: '聽取消息', run() {
+        if (Math.random() < 0.6) { S.gold += 25; log('商隊滿載而歸！你分得 25 金幣。', 'good'); }
+        else log('商隊在沙海中遭遇沙盜，血本無歸。', 'bad');
+      } }],
+    },
+    vizier: {
+      title: '維齊爾的密會', once: true,
+      text: '維齊爾在暗處低語：「將軍擋了我的路。替我除掉他，我保你一命。」',
+      options: () => [
+        { label: '接下這份差事', run() {
+          const g = makePerson(3, false);
+          g.title = '將軍'; g.stats.body += 2; g.quest = 'vizier';
+          S.people.push(g);
+          S.flags.vizier = g.id;
+          schedule('vizierDue', 7);
+          log(`目標是${label(g)}。期限七天。可以用「暗殺」完成，也算作一次殺戮。`, 'gold');
+        } },
+        { label: '向蘇丹告發', check: ['charm', 3], run(ok) {
+          if (ok) { log('蘇丹聽完你的話，笑著把維齊爾的頭掛上了城門。', 'good'); pardon(); }
+          else { log('蘇丹不信你的話。當晚，維齊爾的人找上門來。', 'bad'); loseFollower('死於維齊爾的報復。'); }
+        } },
+        { label: '裝作沒聽見', run() { log('維齊爾冷冷地看了你一眼。'); } },
+      ],
+    },
+    vizierDue: {
+      title: '維齊爾的耐心', cond: () => S.flags.vizier && S.flags.vizier !== 'done',
+      text: '七天到了，將軍還活著。維齊爾派人傳話：「你讓我很失望。」',
+      options: () => [
+        { label: '奉上金幣賠罪', cost: 15, run() { S.flags.vizier = 'done'; log('維齊爾收下金幣，暫時放過了你。'); } },
+        { label: '置之不理', run() { S.flags.vizier = 'done'; loseFollower('被維齊爾的刺客殺害。'); } },
+      ],
+    },
+    princess: {
+      title: '公主的紙條', once: true, minWeek: 2,
+      text: '一張帶著茉莉香氣的紙條塞進你的袖中：「帶我離開這座城。——雅斯敏」',
+      options: () => [
+        { label: '答應她', run() { S.flags.princess = 1; schedule('princessPlan', 2); log('你在紙條背面寫下：等我的消息。', 'gold'); } },
+        { label: '把紙條交給蘇丹', run() { S.gold += 12; log('蘇丹賞了你 12 金幣。那天夜裡，後宮傳出哭聲。'); } },
+        { label: '燒掉紙條', run() {} },
+      ],
+    },
+    princessPlan: {
+      title: '宮牆下的密道', text: '你找到一條通往宮外的舊密道，但守衛森嚴。',
+      options: () => [
+        { label: '摸清守衛的換班', check: ['stealth', 4], run(ok) {
+          if (ok) { S.flags.princess = 2; schedule('princessEscape', 3); log('你摸清了守衛的規律。三天後的新月之夜，就是時機。', 'good'); }
+          else { log('你被巡邏的衛兵看見了。', 'bad'); extraOrder(5); }
+        } },
+        { label: '買通守衛', cost: 20, run() { S.flags.princess = 2; schedule('princessEscape', 3); log('守衛收下金幣，答應在新月之夜睜一隻眼閉一隻眼。', 'good'); } },
+        { label: '放棄計畫', run() { log('你再也沒有收到公主的紙條。'); } },
+      ],
+    },
+    princessEscape: {
+      title: '新月之夜', text: '雅斯敏披著斗篷站在密道口，等著你的決定。',
+      options: () => [
+        { label: '與她一同遠走高飛', cost: 30, run() {
+          ending(true, '遠走高飛', '你們穿過密道，騎上駱駝消失在沙海之中。蘇丹的遊戲，與你再無關係。');
+        } },
+        { label: '讓她留下，成為你的人', run() {
+          addFollower(4, '公主', '雅斯敏').stats.charm += 2;
+        } },
+        { label: '出賣她', run() { S.gold += 20; log('你把公主交給了蘇丹。蘇丹很滿意。', 'bad'); pardon(); } },
+      ],
+    },
+    rebels: {
+      title: '地下反抗軍', once: true, minWeek: 2,
+      text: '一個蒙面人在小巷裡攔住你：「蘇丹的瘋狂該結束了。加入我們。」',
+      options: () => [
+        { label: '加入反抗軍', run() { S.flags.rebels = 1; schedule('rebelTask', 3); log('你成了反抗軍的一員。他們會再聯絡你。', 'gold'); } },
+        { label: '向蘇丹告發', run() { log('反抗軍的據點被血洗。蘇丹記住了你的忠誠。', 'bad'); pardon(); } },
+        { label: '假裝沒看見', run() {} },
+      ],
+    },
+    rebelTask: {
+      title: '反抗軍的任務', ttl: 4, cond: () => S.flags.rebels > 0,
+      text: () => `反抗軍需要你的幫助。（起義準備度：${S.flags.rebels - 1} / 3）`,
+      options: () => [
+        { label: '資助武器', cost: 8, run() { rebelProgress(); } },
+        { label: '襲擊糧倉', check: ['body', 4], run(ok) {
+          if (ok) rebelProgress(); else { loseFollower('在襲擊中被捕，死在地牢裡。'); schedule('rebelTask', 3); }
+        } },
+        { label: '在市集煽動民心', check: ['charm', 4], run(ok) {
+          if (ok) rebelProgress(); else { log('民眾冷眼旁觀，你差點被衛兵盯上。'); schedule('rebelTask', 3); }
+        } },
+        { label: '這次先不參與', run() { schedule('rebelTask', 3); } },
+      ],
+    },
+    rebelUprising: {
+      title: '起義之夜', ttl: 3, cond: () => S.flags.rebels >= 4,
+      text: '萬事俱備。反抗軍首領把彎刀交到你手上：「今夜，由你帶頭衝進宮殿。」',
+      options: () => [
+        { label: '帶頭起義', check: ['body', 5], run(ok) {
+          if (ok) ending(true, '新的蘇丹', '宮殿陷落，蘇丹倒在他的寶座上。眾人跪下，向新的蘇丹——你——高呼萬歲。');
+          else ending(false, '叛亂失敗', '起義被鎮壓。蘇丹饒有興致地看著你：「這可不在遊戲規則裡。」');
+        } },
+        { label: '時機未到', run() { schedule('rebelUprising', 4); } },
+      ],
+    },
+    astro: {
+      title: '星盤殘片', once: true,
+      text: '古董商手裡有一塊刻滿星圖的青銅殘片，據說能預知命運。',
+      options: () => [
+        { label: '研究殘片', check: ['wit', 2], run(ok) {
+          if (ok) { schedule('astro2', 2); log('殘片上的星圖指向舊王陵的方位。', 'good'); }
+          else log('你看不懂上面的符號，古董商把殘片收了回去。');
+        } },
+        { label: '沒興趣', run() {} },
+      ],
+    },
+    astro2: {
+      title: '舊王陵', text: '你在舊王陵找到星盤的另一半，但上面的文字是失傳的古語。',
+      options: () => [{ label: '解讀古語', check: ['wit', 3], run(ok) {
+        if (ok) { schedule('astro3', 2); log('古語提到一個名字：觀星塔。', 'good'); }
+        else log('文字在你眼前模糊了，星盤碎成粉末。', 'bad');
+      } }],
+    },
+    astro3: {
+      title: '觀星塔', text: '你把完整的星盤放在觀星塔頂。群星開始轉動。',
+      options: () => [{ label: '解讀星象', check: ['wit', 4], run(ok) {
+        if (ok) {
+          S.sultan.filter(c => !c.done).forEach(c => (c.deadline = Math.min(c.deadline + 3, LAST_DAY)));
+          S.people.find(p => p.you).stats.wit += 2;
+          log('你預見了蘇丹的心思，提前做好準備。所有旨意期限延長 3 天，你的智慧 +2。', 'good');
+        } else log('星象混沌不明。也許命運本就無法預知。');
+      } }],
+    },
+    assassins: {
+      title: '夜襲', minWeek: 3, ttl: 1,
+      text: '深夜，屋頂上傳來腳步聲。有人想要你的命。',
+      options: () => [
+        { label: '奮起抵抗', check: ['body', 3], run(ok) {
+          if (ok) log('刺客被擊退，留下一灘血跡。', 'good'); else loseFollower('為了保護你，倒在刺客的刀下。');
+        } },
+        { label: '花錢消災', cost: 10, run() { log('你把錢袋扔出窗外，腳步聲遠去了。'); } },
+      ],
+    },
+    plague: {
+      title: '瘟疫', once: true, minWeek: 2, ttl: 2,
+      text: '城南爆發瘟疫，你的門客中有人開始咳嗽。',
+      options: () => [
+        { label: '買藥', cost: 8, run() { log('藥很苦，但大家都撐過來了。', 'good'); } },
+        { label: '聽天由命', run() { if (Math.random() < 0.5) loseFollower('死於瘟疫。'); else log('幸運的是，咳嗽漸漸停了。'); } },
+      ],
+    },
+    nobleFeast: {
+      title: '貴族的夜宴', text: '一位貴族邀你參加他的夜宴，據說會有很多「娛樂」。',
+      options: () => [
+        { label: '赴宴並大出風頭', check: ['charm', 3], run(ok) {
+          if (ok) {
+            log('你成了全場焦點，酒池肉林，荒唐至極。', 'good');
+            fulfil('lust', 2);
+            const np = makePerson(3, false); S.people.push(np); log(`你在宴會上結識了${label(np)}。`);
+          } else log('你在宴會上出了醜，早早離席。');
+        } },
+        { label: '婉拒', run() {} },
+      ],
+    },
+    gamble: {
+      title: '地下賭場', text: '骰子在骨碗裡叮噹作響。「大人，來一把？」',
+      options: () => [
+        { label: '下注', cost: 5, run() {
+          if (Math.random() < 0.45) { S.gold += 12; log('你贏了 12 金幣！', 'good'); } else log('骰子不站在你這邊。', 'bad');
+        } },
+        { label: '離開', run() {} },
+      ],
+    },
+    summon: {
+      title: '蘇丹召見', ttl: 1, text: '蘇丹突然召見你：「我無聊了。給我講個故事。」',
+      options: () => [{ label: '講一個故事', check: ['wit', 3], run(ok) {
+        const c = S.sultan.filter(c => !c.done).sort((a, b) => a.deadline - b.deadline)[0];
+        if (ok) {
+          if (c) c.deadline = Math.min(c.deadline + 2, LAST_DAY);
+          log(`蘇丹聽得入迷${c ? '，寬限了你 2 天' : '，賞你 6 金幣'}。`, 'good');
+          if (!c) S.gold += 6;
+        } else { S.gold = Math.max(0, S.gold - 5); log('蘇丹打了個呵欠，罰你 5 金幣。', 'bad'); }
+      } }],
+    },
+    thief: {
+      title: '金庫失竊', ttl: 1, cond: () => S.gold >= 8,
+      text: '你的金庫被撬開了，地上留著一串腳印。',
+      options: () => [
+        { label: '追查竊賊', check: ['stealth', 2], run(ok) {
+          if (ok) { log('你在貧民窟抓到了竊賊。她跪地求饒，願意為你效力。', 'good'); addFollower(2, '竊賊'); }
+          else { const l = Math.floor(S.gold / 4); S.gold -= l; log(`竊賊逃走了，你損失 ${l} 金幣。`, 'bad'); }
+        } },
+        { label: '認了', run() { const l = Math.floor(S.gold / 4); S.gold -= l; log(`你損失 ${l} 金幣。`, 'bad'); } },
+      ],
+    },
+    merchant: {
+      title: '神秘商人', minWeek: 2, text: '一個戴面紗的商人低聲說：「我有蘇丹親筆簽名的赦免令，只要 35 金幣。」',
+      options: () => [
+        { label: '買下赦免令', cost: 35, run() { pardon(); } },
+        { label: '離開', run() {} },
+      ],
+    },
+  };
+  const RANDOM_EVENTS = ['beggar', 'caravan', 'vizier', 'princess', 'rebels', 'astro', 'assassins', 'plague', 'nobleFeast', 'gamble', 'summon', 'thief', 'merchant'];
+
+  function rebelProgress() {
+    S.flags.rebels++;
+    log(`反抗軍的力量壯大了。（起義準備度：${S.flags.rebels - 1} / 3）`, 'good');
+    if (S.flags.rebels >= 4) { schedule('rebelUprising', 2); log('首領傳話：起義的時機快到了。', 'gold'); }
+    else schedule('rebelTask', 3);
+  }
+
+  function addEvent(key) {
+    const ev = EVENTS[key];
+    S.events.push({ id: nextId++, key, expires: S.day + (ev.ttl || 3) - 1 });
+    if (ev.once) S.flags['seen_' + key] = true;
+  }
+
+  function spawnEvents() {
+    S.events = S.events.filter(e => e.expires >= S.day);
+    S.queue.filter(q => q.day === S.day).forEach(q => { if (!EVENTS[q.key].cond || EVENTS[q.key].cond()) addEvent(q.key); });
+    S.queue = S.queue.filter(q => q.day > S.day);
+    if (S.events.length >= 3 || Math.random() > 0.5) return;
+    const pool = RANDOM_EVENTS.filter(k => {
+      const ev = EVENTS[k];
+      return !(ev.once && S.flags['seen_' + k]) && week() >= (ev.minWeek || 1) && (!ev.cond || ev.cond()) && !S.events.some(e => e.key === k);
+    });
+    if (pool.length) addEvent(pick(pool));
+  }
+
+  function chooseEvent(id, idx) {
+    const e = S.events.find(e => e.id === id);
+    if (!e || S.over) return;
+    const ev = EVENTS[e.key];
+    const opt = ev.options()[idx];
+    if (opt.cost && S.gold < opt.cost) return;
+    if (opt.cost) S.gold -= opt.cost;
+    S.events = S.events.filter(x => x !== e);
+    log(`【${ev.title}】你選擇：${opt.label}。`);
+    opt.run(opt.check ? test(...opt.check) : true);
+    if (S.over) return;
+    save();
+    render();
+  }
+
+  function onKilled(t) {
+    if (t.quest === 'vizier' && S.flags.vizier === t.id) {
+      S.flags.vizier = 'done';
+      S.gold += 20;
+      log('維齊爾很滿意：「你是個有用的人。」他給了你 20 金幣。', 'gold');
+      pardon();
+    }
+  }
 
   // Each rite: who can join, what extra choice it needs, the check, and the outcome.
   const RITES = [
@@ -336,6 +670,7 @@
           S.people = S.people.filter(p => p !== t);
           log(`${label(t)}倒在血泊中。${t.follower ? '曾經的追隨者，再也不會說話了。' : ''}`, 'bad');
           fulfil('slaughter', t.rank);
+          onKilled(t);
         } else {
           log(`暗殺${t.name}失敗了。`, 'bad');
           const victims = ps.filter(p => !p.you);
@@ -483,6 +818,26 @@
     $('sGold').textContent = S.gold;
     $('sWage').textContent = S.people.filter(p => p.follower).reduce((s, p) => s + WAGE[p.rank], 0);
     $('sDone').textContent = S.done;
+    $('sPardon').textContent = S.pardon;
+
+    $('events').innerHTML = S.events.length ? S.events.map(e => {
+      const ev = EVENTS[e.key];
+      const text = typeof ev.text === 'function' ? ev.text() : ev.text;
+      const left = e.expires - S.day + 1;
+      const opts = ev.options().map((o, i) => {
+        let extra = '';
+        if (o.cost) extra = `（${o.cost} 金幣）`;
+        if (o.check) {
+          const [attr, need] = o.check;
+          extra = `（${ATTRS[attr]} 需 ${need}，${Math.round(chance(dice(bestGroup(attr), attr), need) * 100)}%）`;
+        }
+        const dis = S.over || (o.cost && S.gold < o.cost) ? 'disabled' : '';
+        return `<button class="ghost" data-e="${e.id}" data-o="${i}" ${dis}>${o.label}${extra}</button>`;
+      }).join('');
+      return `<div class="card event"><h3>${ev.title}<span class="left">${left <= 1 ? '今天結束前' : `剩 ${left} 天`}</span></h3>
+        <p>${text}</p><div class="opts">${opts}</div></div>`;
+    }).join('') : '<div class="help">今天城裡風平浪靜。</div>';
+    $('events').querySelectorAll('button').forEach(b => (b.onclick = () => chooseEvent(+b.dataset.e, +b.dataset.o)));
 
     $('sultan').innerHTML = S.sultan.slice(-4).map(c => {
       const left = c.deadline - S.day + 1;
@@ -511,7 +866,11 @@
   function load() {
     try {
       const d = JSON.parse(localStorage.getItem('sultan.save'));
-      if (d && d.S && !d.S.over) { S = d.S; nextId = d.nextId; return true; }
+      if (d && d.S && !d.S.over) {
+        S = Object.assign({ events: [], queue: [], flags: {}, pardon: 0 }, d.S);
+        nextId = d.nextId;
+        return true;
+      }
     } catch (e) {}
     return false;
   }
