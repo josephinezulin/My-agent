@@ -1,0 +1,391 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Block Out</title>
+<meta name="description" content="Block Out - 色塊滑出益智遊戲：拖動色塊，從相同顏色的出口滑出棋盤。">
+<style>
+  :root {
+    --bg: #1d2333;
+    --panel: #283048;
+    --board: #3a4463;
+    --cell: #313a55;
+    --wall: #151a28;
+    --text: #f2f4fa;
+    --muted: #9aa3bf;
+    --accent: #ffcc33;
+    --c0: #ef4b5b;
+    --c1: #3d8bff;
+    --c2: #3cc46b;
+    --c3: #ffd23f;
+    --c4: #a35cf0;
+    --c5: #ff8c2e;
+    --c6: #2fd0d6;
+    --c7: #ff6fb5;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; }
+  body {
+    background: radial-gradient(circle at 50% 0%, #2b3554, var(--bg) 70%);
+    color: var(--text);
+    font-family: system-ui, -apple-system, "Segoe UI", "Noto Sans TC", sans-serif;
+    display: flex; flex-direction: column; align-items: center;
+    overflow: hidden; user-select: none; -webkit-user-select: none;
+    touch-action: none;
+  }
+  header {
+    width: 100%; max-width: 560px; padding: 14px 16px 6px;
+    display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  }
+  h1 { font-size: 22px; margin: 0; letter-spacing: 1px; }
+  h1 span { color: var(--accent); }
+  .stats { display: flex; gap: 10px; font-size: 14px; color: var(--muted); }
+  .stats b { color: var(--text); font-size: 16px; }
+  .toolbar { display: flex; gap: 8px; padding: 4px 16px 10px; }
+  button {
+    font: inherit; font-size: 14px; font-weight: 600; color: var(--text);
+    background: var(--panel); border: 0; border-radius: 10px; padding: 9px 14px;
+    box-shadow: 0 3px 0 #0007; cursor: pointer;
+  }
+  button:active { transform: translateY(2px); box-shadow: 0 1px 0 #0007; }
+  button:disabled { opacity: .4; cursor: default; }
+  button.primary { background: var(--accent); color: #2a2200; }
+  main { flex: 1; display: flex; align-items: center; justify-content: center; width: 100%; padding: 0 16px 16px; }
+  #board {
+    position: relative; background: var(--wall); border-radius: 16px;
+    box-shadow: 0 10px 30px #0008;
+  }
+  #grid { position: absolute; background: var(--board); border-radius: 6px; }
+  .cell { position: absolute; background: var(--cell); border-radius: 6px; }
+  .gate { position: absolute; border-radius: 4px; }
+  .gate::after {
+    content: ""; position: absolute; inset: 0; border-radius: 4px;
+    background: repeating-linear-gradient(45deg, #fff3 0 4px, transparent 4px 9px);
+  }
+  .block {
+    position: absolute; left: 0; top: 0; z-index: 2; pointer-events: none;
+    transition: transform 90ms ease-out; filter: drop-shadow(0 4px 0 #0005);
+  }
+  .block.dragging { z-index: 3; transition: transform 60ms linear; }
+  .block.exiting { transition: transform 320ms ease-in, opacity 320ms ease-in; opacity: 0; pointer-events: none; }
+  .block .part {
+    position: absolute; border-radius: 7px; pointer-events: auto; cursor: grab;
+  }
+  .block.dragging .part { cursor: grabbing; }
+  .block.dragging .part { filter: brightness(1.12); }
+  .block.bump .part { animation: bump 180ms; }
+  @keyframes bump { 50% { filter: brightness(.75); } }
+  .overlay {
+    position: fixed; inset: 0; background: #0009; display: none;
+    align-items: center; justify-content: center; z-index: 10; padding: 16px;
+  }
+  .overlay.show { display: flex; }
+  .card {
+    background: var(--panel); border-radius: 18px; padding: 22px; width: 100%; max-width: 380px;
+    text-align: center; box-shadow: 0 20px 50px #000a;
+  }
+  .card h2 { margin: 0 0 8px; }
+  .card p { color: var(--muted); margin: 0 0 16px; line-height: 1.5; }
+  .card .row { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+  #levels { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; margin: 12px 0 16px; }
+  #levels button { padding: 12px 0; }
+  #levels button.done { background: #3cc46b; color: #08210f; }
+  #levels button.current { outline: 2px solid var(--accent); }
+  .help { font-size: 13px; color: var(--muted); text-align: left; }
+  .help li { margin-bottom: 4px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>BLOCK <span>OUT</span></h1>
+  <div class="stats">
+    <div>關卡 <b id="lvl">1</b></div>
+    <div>步數 <b id="moves">0</b></div>
+    <div>剩餘 <b id="left">0</b></div>
+  </div>
+</header>
+<div class="toolbar">
+  <button id="btnUndo">復原</button>
+  <button id="btnReset">重來</button>
+  <button id="btnLevels">選關</button>
+  <button id="btnHelp">說明</button>
+</div>
+<main><div id="board"><div id="grid"></div></div></main>
+
+<div class="overlay" id="winBox">
+  <div class="card">
+    <h2>過關！</h2>
+    <p id="winText"></p>
+    <div class="row">
+      <button id="btnReplay">再玩一次</button>
+      <button class="primary" id="btnNext">下一關</button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="levelBox">
+  <div class="card">
+    <h2>選擇關卡</h2>
+    <div id="levels"></div>
+    <button id="btnCloseLevels">關閉</button>
+  </div>
+</div>
+
+<div class="overlay" id="helpBox">
+  <div class="card">
+    <h2>玩法</h2>
+    <ul class="help">
+      <li>拖動色塊在棋盤上滑動，色塊不能穿過其他色塊。</li>
+      <li>棋盤邊框上有彩色出口，把色塊推到「相同顏色」的出口即可滑出。</li>
+      <li>出口寬度必須容得下色塊，色塊才出得去。</li>
+      <li>清空所有色塊即過關，步數越少越好。</li>
+    </ul>
+    <button class="primary" id="btnCloseHelp">開始</button>
+  </div>
+</div>
+
+<script src="levels.js"></script>
+<script>
+(() => {
+  const LEVELS = window.LEVELS;
+  const DIRS = { L: [-1, 0], R: [1, 0], T: [0, -1], B: [0, 1] };
+  const $ = id => document.getElementById(id);
+  const board = $('board'), grid = $('grid');
+
+  const store = {
+    get(k, d) { try { const v = localStorage.getItem('blockout.' + k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } },
+    set(k, v) { try { localStorage.setItem('blockout.' + k, JSON.stringify(v)); } catch (e) {} },
+  };
+
+  let levelIndex = Math.min(store.get('level', 0), LEVELS.length - 1);
+  let level, blocks, moves, history, cell, wall, els;
+
+  function span(shape) {
+    let w = 0, h = 0;
+    for (const [x, y] of shape) { w = Math.max(w, x + 1); h = Math.max(h, y + 1); }
+    return { w, h };
+  }
+
+  function exitGate(b) {
+    const { w, h } = b.size;
+    return level.gates.find(g => {
+      if (g.color !== b.color) return false;
+      if (g.side === 'L') return b.x === 0 && b.y >= g.from && b.y + h <= g.to;
+      if (g.side === 'R') return b.x + w === level.w && b.y >= g.from && b.y + h <= g.to;
+      if (g.side === 'T') return b.y === 0 && b.x >= g.from && b.x + w <= g.to;
+      return b.y + h === level.h && b.x >= g.from && b.x + w <= g.to;
+    });
+  }
+
+  function free(b, nx, ny) {
+    return b.shape.every(([cx, cy]) => {
+      const x = nx + cx, y = ny + cy;
+      if (x < 0 || y < 0 || x >= level.w || y >= level.h) return false;
+      return !blocks.some(o => o !== b && o.alive && o.shape.some(([ox, oy]) => o.x + ox === x && o.y + oy === y));
+    });
+  }
+
+  function load(i) {
+    levelIndex = i;
+    store.set('level', i);
+    level = LEVELS[i];
+    blocks = level.blocks.map((b, id) => ({ id, shape: b.shape, color: b.color, x: b.x, y: b.y, alive: true, size: span(b.shape) }));
+    moves = 0;
+    history = [];
+    layout();
+    update();
+  }
+
+  function layout() {
+    const availW = Math.min(window.innerWidth - 32, 560);
+    const availH = window.innerHeight - board.getBoundingClientRect().top - 24;
+    cell = Math.floor(Math.min(64, (availW - 28) / level.w, (availH - 28) / level.h));
+    wall = Math.max(10, Math.round(cell * 0.24));
+    const gap = Math.max(2, Math.round(cell * 0.06));
+    board.style.width = level.w * cell + wall * 2 + 'px';
+    board.style.height = level.h * cell + wall * 2 + 'px';
+    grid.style.cssText = `left:${wall}px;top:${wall}px;width:${level.w * cell}px;height:${level.h * cell}px`;
+    board.querySelectorAll('.gate, .block').forEach(e => e.remove());
+    grid.innerHTML = '';
+
+    for (let y = 0; y < level.h; y++) for (let x = 0; x < level.w; x++) {
+      const c = document.createElement('div');
+      c.className = 'cell';
+      c.style.cssText = `left:${x * cell + gap}px;top:${y * cell + gap}px;width:${cell - gap * 2}px;height:${cell - gap * 2}px`;
+      grid.appendChild(c);
+    }
+
+    for (const g of level.gates) {
+      const e = document.createElement('div');
+      e.className = 'gate';
+      const a = wall + g.from * cell + gap, len = (g.to - g.from) * cell - gap * 2;
+      const t = wall - 3;
+      const pos = {
+        L: `left:1px;top:${a}px;width:${t}px;height:${len}px`,
+        R: `right:1px;top:${a}px;width:${t}px;height:${len}px`,
+        T: `top:1px;left:${a}px;height:${t}px;width:${len}px`,
+        B: `bottom:1px;left:${a}px;height:${t}px;width:${len}px`,
+      }[g.side];
+      e.style.cssText = pos + `;background:var(--c${g.color})`;
+      board.appendChild(e);
+    }
+
+    els = [];
+    blocks.forEach(b => {
+      const e = document.createElement('div');
+      els[b.id] = e;
+      e.className = 'block';
+      e.style.width = b.size.w * cell + 'px';
+      e.style.height = b.size.h * cell + 'px';
+      // Parts are merged visually by extending each cell toward same-block neighbours.
+      for (const [cx, cy] of b.shape) {
+        const has = (dx, dy) => b.shape.some(([x, y]) => x === cx + dx && y === cy + dy);
+        const l = has(-1, 0) ? 0 : gap, r = has(1, 0) ? 0 : gap;
+        const t = has(0, -1) ? 0 : gap, bt = has(0, 1) ? 0 : gap;
+        const p = document.createElement('div');
+        p.className = 'part';
+        p.style.cssText = `left:${cx * cell + l}px;top:${cy * cell + t}px;width:${cell - l - r}px;height:${cell - t - bt}px;background-color:var(--c${b.color})`;
+        if (!has(-1, 0) || !has(1, 0) || !has(0, -1) || !has(0, 1)) {
+          const rad = (dx, dy) => (has(dx, 0) || has(0, dy) ? '2px' : '8px');
+          p.style.borderRadius = `${rad(-1, -1)} ${rad(1, -1)} ${rad(1, 1)} ${rad(-1, 1)}`;
+        }
+        e.appendChild(p);
+      }
+      e.addEventListener('pointerdown', ev => startDrag(ev, b));
+      board.appendChild(e);
+      place(b);
+      if (!b.alive) e.style.display = 'none';
+    });
+  }
+
+  function place(b, extra = [0, 0]) {
+    els[b.id].style.transform = `translate(${wall + (b.x + extra[0]) * cell}px, ${wall + (b.y + extra[1]) * cell}px)`;
+  }
+
+  function update() {
+    $('lvl').textContent = levelIndex + 1;
+    $('moves').textContent = moves;
+    $('left').textContent = blocks.filter(b => b.alive).length;
+    $('btnUndo').disabled = !history.length;
+  }
+
+  function snapshot() { return blocks.map(b => [b.x, b.y, b.alive]); }
+
+  function tryExit(b) {
+    const g = exitGate(b);
+    if (!g) return false;
+    b.alive = false;
+    const e = els[b.id];
+    e.classList.remove('dragging');
+    e.classList.add('exiting');
+    const [dx, dy] = DIRS[g.side];
+    const dist = (dx ? b.size.w : b.size.h) + 1;
+    place(b, [dx * dist, dy * dist]);
+    setTimeout(() => { if (!b.alive) e.style.display = 'none'; }, 330);
+    update();
+    if (blocks.every(o => !o.alive)) setTimeout(win, 420);
+    return true;
+  }
+
+  let drag = null;
+  function startDrag(ev, b) {
+    if (!b.alive || drag) return;
+    ev.preventDefault();
+    els[b.id].setPointerCapture(ev.pointerId);
+    els[b.id].classList.add('dragging');
+    drag = { b, id: ev.pointerId, sx: ev.clientX, sy: ev.clientY, ox: b.x, oy: b.y, before: snapshot() };
+  }
+
+  function moveDrag(ev) {
+    if (!drag || ev.pointerId !== drag.id) return;
+    const { b } = drag;
+    const tx = drag.ox + Math.round((ev.clientX - drag.sx) / cell);
+    const ty = drag.oy + Math.round((ev.clientY - drag.sy) / cell);
+    let blocked = false;
+    for (let i = 0; i < 64 && (b.x !== tx || b.y !== ty); i++) {
+      const rx = tx - b.x, ry = ty - b.y;
+      const stepX = [Math.sign(rx), 0], stepY = [0, Math.sign(ry)];
+      const order = Math.abs(rx) >= Math.abs(ry) ? [stepX, stepY] : [stepY, stepX];
+      const step = order.find(([dx, dy]) => (dx || dy) && free(b, b.x + dx, b.y + dy));
+      if (!step) { blocked = true; break; }
+      b.x += step[0]; b.y += step[1];
+    }
+    place(b);
+    if (blocked) {
+      const e = els[b.id];
+      if (!e.classList.contains('bump')) { e.classList.add('bump'); setTimeout(() => e.classList.remove('bump'), 180); }
+    }
+    if (exitGate(b)) endDrag(ev);
+  }
+
+  function endDrag(ev) {
+    if (!drag || ev.pointerId !== drag.id) return;
+    const { b, ox, oy, before } = drag;
+    drag = null;
+    els[b.id].classList.remove('dragging');
+    if (b.x !== ox || b.y !== oy) {
+      moves++;
+      history.push(before);
+    }
+    tryExit(b);
+    update();
+  }
+
+  board.addEventListener('pointermove', moveDrag);
+  board.addEventListener('pointerup', endDrag);
+  board.addEventListener('pointercancel', endDrag);
+
+  function undo() {
+    if (!history.length || drag) return;
+    const snap = history.pop();
+    snap.forEach(([x, y, alive], i) => Object.assign(blocks[i], { x, y, alive }));
+    moves = Math.max(0, moves - 1);
+    layout();
+    update();
+  }
+
+  function win() {
+    const done = store.get('done', {});
+    const best = done[levelIndex];
+    done[levelIndex] = best ? Math.min(best, moves) : moves;
+    store.set('done', done);
+    const last = levelIndex === LEVELS.length - 1;
+    $('winText').textContent = `使用 ${moves} 步完成第 ${levelIndex + 1} 關` +
+      (best ? `（最佳紀錄 ${done[levelIndex]} 步）` : '') + (last ? '。全部關卡完成！' : '');
+    $('btnNext').textContent = last ? '回到第 1 關' : '下一關';
+    $('winBox').classList.add('show');
+  }
+
+  function showLevels() {
+    const done = store.get('done', {});
+    const box = $('levels');
+    box.innerHTML = '';
+    LEVELS.forEach((_, i) => {
+      const btn = document.createElement('button');
+      btn.textContent = i + 1;
+      if (done[i]) btn.classList.add('done');
+      if (i === levelIndex) btn.classList.add('current');
+      btn.onclick = () => { $('levelBox').classList.remove('show'); load(i); };
+      box.appendChild(btn);
+    });
+    $('levelBox').classList.add('show');
+  }
+
+  $('btnUndo').onclick = undo;
+  $('btnReset').onclick = () => load(levelIndex);
+  $('btnLevels').onclick = showLevels;
+  $('btnHelp').onclick = () => $('helpBox').classList.add('show');
+  $('btnCloseHelp').onclick = () => { $('helpBox').classList.remove('show'); store.set('seenHelp', true); };
+  $('btnCloseLevels').onclick = () => $('levelBox').classList.remove('show');
+  $('btnReplay').onclick = () => { $('winBox').classList.remove('show'); load(levelIndex); };
+  $('btnNext').onclick = () => { $('winBox').classList.remove('show'); load((levelIndex + 1) % LEVELS.length); };
+  document.addEventListener('keydown', e => { if ((e.ctrlKey || e.metaKey) && e.key === 'z') undo(); });
+  window.addEventListener('resize', () => { if (!drag) layout(); });
+
+  load(levelIndex);
+  if (!store.get('seenHelp', false)) $('helpBox').classList.add('show');
+})();
+</script>
+</body>
+</html>
