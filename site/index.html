@@ -59,6 +59,13 @@
   }
   #grid { position: absolute; background: var(--board); border-radius: 6px; }
   .cell { position: absolute; background: var(--cell); border-radius: 6px; }
+  .cell.wall {
+    background: repeating-linear-gradient(45deg, #1b2030 0 6px, #232a3d 6px 12px);
+    box-shadow: inset 0 0 0 2px #0006;
+  }
+  .stats .limit { color: var(--accent); }
+  .stats .limit.low { color: #ff6b6b; }
+  .stars { font-size: 28px; letter-spacing: 6px; color: var(--accent); margin-bottom: 6px; }
   .gate { position: absolute; border-radius: 4px; }
   .gate::after {
     content: ""; position: absolute; inset: 0; border-radius: 4px;
@@ -89,8 +96,11 @@
   .card h2 { margin: 0 0 8px; }
   .card p { color: var(--muted); margin: 0 0 16px; line-height: 1.5; }
   .card .row { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
-  #levels { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; margin: 12px 0 16px; }
-  #levels button { padding: 12px 0; }
+  .card.scroll { max-height: 88vh; overflow: auto; }
+  #levels { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; margin: 8px 0 16px; }
+  #levels .section { grid-column: 1 / -1; text-align: left; font-size: 13px; color: var(--muted); margin-top: 6px; }
+  #levels button { padding: 8px 0; line-height: 1.2; }
+  #levels button small { display: block; font-size: 10px; letter-spacing: 1px; color: inherit; opacity: .85; min-height: 12px; }
   #levels button.done { background: #3cc46b; color: #08210f; }
   #levels button.current { outline: 2px solid var(--accent); }
   .help { font-size: 13px; color: var(--muted); text-align: left; }
@@ -102,7 +112,7 @@
   <h1>BLOCK <span>OUT</span></h1>
   <div class="stats">
     <div>關卡 <b id="lvl">1</b></div>
-    <div>步數 <b id="moves">0</b></div>
+    <div>步數 <b id="moves">0</b><b id="limit" class="limit"></b></div>
     <div>剩餘 <b id="left">0</b></div>
   </div>
 </header>
@@ -118,6 +128,7 @@
 <div class="overlay" id="winBox">
   <div class="card">
     <h2>過關！</h2>
+    <div class="stars" id="stars"></div>
     <p id="winText"></p>
     <div class="row">
       <button id="btnReplay">再玩一次</button>
@@ -126,8 +137,19 @@
   </div>
 </div>
 
-<div class="overlay" id="levelBox">
+<div class="overlay" id="failBox">
   <div class="card">
+    <h2>步數用完了</h2>
+    <p>這一關限 <b id="failLimit"></b> 步。被擋住的色塊，可能要先挪到別處，才能讓出路來。</p>
+    <div class="row">
+      <button id="btnFailUndo">復原一步</button>
+      <button class="primary" id="btnFailRetry">重來</button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="levelBox">
+  <div class="card scroll">
     <h2>選擇關卡</h2>
     <div id="levels"></div>
     <button id="btnCloseLevels">關閉</button>
@@ -141,7 +163,8 @@
       <li>拖動色塊在棋盤上滑動，色塊不能穿過其他色塊。</li>
       <li>棋盤邊框上有彩色出口，把色塊推到「相同顏色」的出口即可滑出。</li>
       <li>出口寬度必須容得下色塊，色塊才出得去。</li>
-      <li>清空所有色塊即過關，步數越少越好。</li>
+      <li>清空所有色塊即過關，步數越少越好；達到最少步數可得三顆星。</li>
+      <li>第 21 關起為困難關卡：有斜紋的石塊擋路，而且步數有限制，必須先挪開某些色塊才能過關。</li>
     </ul>
     <button class="primary" id="btnCloseHelp">開始</button>
   </div>
@@ -161,7 +184,7 @@
   };
 
   let levelIndex = Math.min(store.get('level', 0), LEVELS.length - 1);
-  let level, blocks, moves, history, cell, wall, els;
+  let level, blocks, moves, history, cell, wall, els, walls;
 
   function span(shape) {
     let w = 0, h = 0;
@@ -184,6 +207,7 @@
     return b.shape.every(([cx, cy]) => {
       const x = nx + cx, y = ny + cy;
       if (x < 0 || y < 0 || x >= level.w || y >= level.h) return false;
+      if (walls.has(x + ',' + y)) return false;
       return !blocks.some(o => o !== b && o.alive && o.shape.some(([ox, oy]) => o.x + ox === x && o.y + oy === y));
     });
   }
@@ -192,6 +216,7 @@
     levelIndex = i;
     store.set('level', i);
     level = LEVELS[i];
+    walls = new Set((level.walls || []).map(([x, y]) => x + ',' + y));
     blocks = level.blocks.map((b, id) => ({ id, shape: b.shape, color: b.color, x: b.x, y: b.y, alive: true, size: span(b.shape) }));
     moves = 0;
     history = [];
@@ -213,7 +238,7 @@
 
     for (let y = 0; y < level.h; y++) for (let x = 0; x < level.w; x++) {
       const c = document.createElement('div');
-      c.className = 'cell';
+      c.className = walls.has(x + ',' + y) ? 'cell wall' : 'cell';
       c.style.cssText = `left:${x * cell + gap}px;top:${y * cell + gap}px;width:${cell - gap * 2}px;height:${cell - gap * 2}px`;
       grid.appendChild(c);
     }
@@ -268,6 +293,8 @@
   function update() {
     $('lvl').textContent = levelIndex + 1;
     $('moves').textContent = moves;
+    $('limit').textContent = level.limit ? ' / ' + level.limit : '';
+    $('limit').classList.toggle('low', !!level.limit && level.limit - moves <= 2);
     $('left').textContent = blocks.filter(b => b.alive).length;
     $('btnUndo').disabled = !history.length;
   }
@@ -332,6 +359,10 @@
     }
     tryExit(b);
     update();
+    if (level.limit && moves >= level.limit && blocks.some(o => o.alive)) {
+      $('failLimit').textContent = level.limit;
+      setTimeout(() => $('failBox').classList.add('show'), 350);
+    }
   }
 
   board.addEventListener('pointermove', moveDrag);
@@ -347,13 +378,17 @@
     update();
   }
 
+  const starsFor = (i, m) => (m <= LEVELS[i].par ? 3 : m <= LEVELS[i].par + 2 ? 2 : 1);
+  const starText = n => '★'.repeat(n) + '☆'.repeat(3 - n);
+
   function win() {
     const done = store.get('done', {});
     const best = done[levelIndex];
     done[levelIndex] = best ? Math.min(best, moves) : moves;
     store.set('done', done);
     const last = levelIndex === LEVELS.length - 1;
-    $('winText').textContent = `使用 ${moves} 步完成第 ${levelIndex + 1} 關` +
+    $('stars').textContent = starText(starsFor(levelIndex, moves));
+    $('winText').textContent = `使用 ${moves} 步完成第 ${levelIndex + 1} 關（最少 ${level.par} 步）` +
       (best ? `（最佳紀錄 ${done[levelIndex]} 步）` : '') + (last ? '。全部關卡完成！' : '');
     $('btnNext').textContent = last ? '回到第 1 關' : '下一關';
     $('winBox').classList.add('show');
@@ -363,9 +398,15 @@
     const done = store.get('done', {});
     const box = $('levels');
     box.innerHTML = '';
-    LEVELS.forEach((_, i) => {
+    LEVELS.forEach((l, i) => {
+      if (i === 0 || !!l.limit !== !!LEVELS[i - 1].limit) {
+        const h = document.createElement('div');
+        h.className = 'section';
+        h.textContent = l.limit ? '困難：限制步數' : '一般';
+        box.appendChild(h);
+      }
       const btn = document.createElement('button');
-      btn.textContent = i + 1;
+      btn.innerHTML = `${i + 1}<small>${done[i] ? starText(starsFor(i, done[i])) : ''}</small>`;
       if (done[i]) btn.classList.add('done');
       if (i === levelIndex) btn.classList.add('current');
       btn.onclick = () => { $('levelBox').classList.remove('show'); load(i); };
@@ -375,6 +416,8 @@
   }
 
   $('btnUndo').onclick = undo;
+  $('btnFailUndo').onclick = () => { $('failBox').classList.remove('show'); undo(); };
+  $('btnFailRetry').onclick = () => { $('failBox').classList.remove('show'); load(levelIndex); };
   $('btnReset').onclick = () => load(levelIndex);
   $('btnLevels').onclick = showLevels;
   $('btnHelp').onclick = () => $('helpBox').classList.add('show');
