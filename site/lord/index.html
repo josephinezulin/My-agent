@@ -1,0 +1,555 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>最強領主</title>
+<meta name="description" content="最強領主 網頁版：左右滑動選擇路線，穿過機關壯大軍隊，攻下敵方城堡，招募英雄、養育獅鷲、提升爵位。">
+<style>
+  :root {
+    --sky: #8fd3ff;
+    --panel: #fff8e8;
+    --ink: #3a2a14;
+    --muted: #8a7458;
+    --gold: #ffb400;
+    --blue: #2f7dff;
+    --red: #e8473f;
+    --green: #39b56a;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; }
+  body {
+    background: linear-gradient(180deg, #8fd3ff, #cdeeff 60%, #7cc66d);
+    color: var(--ink); font-family: system-ui, -apple-system, "Segoe UI", "Noto Sans TC", sans-serif;
+    display: flex; flex-direction: column; align-items: center; overflow: hidden;
+    user-select: none; -webkit-user-select: none; touch-action: none;
+  }
+  nav.games { width: 100%; max-width: 480px; padding: 8px 16px 0; font-size: 13px; display: flex; gap: 12px; flex-wrap: wrap; }
+  nav.games a { color: var(--ink); opacity: .65; text-decoration: none; font-weight: 600; }
+  nav.games a.on { opacity: 1; text-decoration: underline; }
+  header { width: 100%; max-width: 480px; padding: 6px 16px; display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+  h1 { margin: 0; font-size: 20px; font-weight: 900; }
+  .res { display: flex; gap: 8px; font-size: 14px; font-weight: 800; }
+  .res span { background: #fff9; border-radius: 999px; padding: 3px 10px; }
+  main { flex: 1; width: 100%; display: flex; justify-content: center; align-items: flex-start; min-height: 0; padding-bottom: 10px; }
+  canvas { border-radius: 18px; box-shadow: 0 10px 30px #0003; touch-action: none; display: block; }
+  .overlay { position: fixed; inset: 0; background: #2a1c0a99; display: none; align-items: center; justify-content: center; padding: 16px; z-index: 5; }
+  .overlay.show { display: flex; }
+  .card { background: var(--panel); border-radius: 20px; padding: 20px; width: 100%; max-width: 400px; max-height: 90vh; overflow: auto; box-shadow: 0 16px 40px #0005; border: 3px solid #e7c98a; }
+  .card h2 { margin: 0 0 4px; text-align: center; }
+  .card .sub { text-align: center; color: var(--muted); font-size: 14px; margin-bottom: 12px; }
+  .stars { text-align: center; font-size: 30px; color: var(--gold); letter-spacing: 6px; }
+  button {
+    font: inherit; font-weight: 800; font-size: 15px; border: 0; border-radius: 12px; padding: 10px 14px;
+    background: #fff; color: var(--ink); box-shadow: 0 3px 0 #0002; cursor: pointer;
+  }
+  button.primary { background: linear-gradient(180deg, #ffcf3f, #ff9f1a); color: #4a2a00; }
+  button.big { width: 100%; font-size: 20px; padding: 14px; margin-top: 8px; }
+  button:disabled { opacity: .45; cursor: default; }
+  button:active:not(:disabled) { transform: translateY(2px); box-shadow: 0 1px 0 #0002; }
+  .tabs { display: flex; gap: 6px; margin: 8px 0; }
+  .tabs button { flex: 1; padding: 8px 4px; font-size: 14px; }
+  .tabs button.on { background: var(--ink); color: #fff; }
+  .list { display: flex; flex-direction: column; gap: 8px; }
+  .row { display: flex; align-items: center; gap: 10px; background: #fff; border-radius: 14px; padding: 10px; }
+  .row .ic { width: 44px; height: 44px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-weight: 900; font-size: 20px; color: #fff; flex: 0 0 auto; }
+  .row .tx { flex: 1; font-size: 13px; color: var(--muted); }
+  .row .tx b { display: block; color: var(--ink); font-size: 15px; }
+  .row button { padding: 8px 10px; font-size: 13px; white-space: nowrap; }
+  .rank { text-align: center; margin: 6px 0 10px; }
+  .rank b { font-size: 22px; }
+  .bar { height: 12px; background: #0001; border-radius: 6px; overflow: hidden; margin-top: 4px; }
+  .bar div { height: 100%; background: linear-gradient(90deg, #ffcf3f, #ff9f1a); }
+  .help { font-size: 14px; color: var(--muted); padding-left: 18px; margin: 8px 0; }
+  .help li { margin-bottom: 4px; }
+</style>
+</head>
+<body>
+<nav class="games"><a href="../">Block Out</a><a href="../sultan/">蘇丹的遊戲</a><a href="../bounce/">Count and Bounce</a><a class="on" href="./">最強領主</a></nav>
+<header>
+  <h1>第 <span id="lvl">1</span> 關</h1>
+  <div class="res"><span>金 <b id="gold">0</b></span><span>地契 <b id="deeds">0</b></span></div>
+</header>
+<main><canvas id="cv"></canvas></main>
+
+<div class="overlay show" id="hub"><div class="card" id="hubCard"></div></div>
+<div class="overlay" id="endBox"><div class="card" id="endCard"></div></div>
+
+<script>
+(() => {
+  const W = 360, H = 640;
+  const PLAYER_Y = 520, SPEED = 230;
+  const $ = id => document.getElementById(id);
+  const cv = $('cv'), ctx = cv.getContext('2d');
+
+  const store = {
+    get(k, d) { try { const v = localStorage.getItem('lord.' + k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } },
+    set(k, v) { try { localStorage.setItem('lord.' + k, JSON.stringify(v)); } catch (e) {} },
+  };
+  const save = () => store.set('meta', meta);
+  const meta = Object.assign({ level: 1, gold: 0, deeds: 0, troops: 0, income: 0, heroes: {}, griffin: 0, best: {} }, store.get('meta', {}));
+
+  // Nobility ranks unlock with deeds; each rank adds income.
+  const TITLES = [['平民領主', 0], ['男爵', 3], ['子爵', 8], ['伯爵', 15], ['侯爵', 25], ['公爵', 40], ['國王', 60]];
+  const titleIndex = () => TITLES.reduce((i, t, k) => (meta.deeds >= t[1] ? k : i), 0);
+  const HEROES = {
+    knight: { name: '騎士團長', ch: '騎', color: '#2f7dff', desc: lv => `出征時多帶 ${lv * 8} 名士兵`, cost: lv => 60 + lv * 80 },
+    archer: { name: '神射手', ch: '弓', color: '#39b56a', desc: lv => `交戰前射殺敵軍 ${lv * 10}%`, cost: lv => 80 + lv * 100 },
+    mage: { name: '大法師', ch: '法', color: '#8a4bff', desc: lv => `所有「+」機關額外 +${lv * 2}`, cost: lv => 100 + lv * 120 },
+  };
+  const UPGRADES = {
+    troops: { name: '徵召士兵', ch: '兵', color: '#c47a3c', desc: lv => `初始兵力 ${10 + lv * 5}`, cost: lv => 20 + lv * 25 },
+    income: { name: '城鎮稅收', ch: '稅', color: '#d9a300', desc: lv => `關卡金幣 +${lv * 15}%`, cost: lv => 30 + lv * 40 },
+  };
+  const griffinCost = lv => 150 + lv * 150;
+
+  function rng(seed) {
+    let s = seed >>> 0;
+    return () => {
+      s = (s + 0x6d2b79f5) >>> 0;
+      let t = s;
+      t = Math.imul(t ^ (t >>> 15), t | 1);
+      t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+
+  const startArmy = () => 10 + meta.troops * 5 + (meta.heroes.knight || 0) * 8;
+  const mageBonus = () => (meta.heroes.mage || 0) * 2;
+  function applyOp(n, g) {
+    if (g.op === '+') return n + g.n + mageBonus();
+    if (g.op === 'x') return n * g.n;
+    if (g.op === '-') return Math.max(0, n - g.n);
+    return Math.floor(n / g.n);
+  }
+
+  // Each level is a list of rows on a track. Gate rows split the road into a
+  // left and a right gate; enemy and trap rows sit on one side and can be
+  // dodged. The castle's garrison is set from the best possible route with
+  // no upgrades, so every level can be won by a careful player.
+  function buildLevel(n) {
+    const r = rng(9000 + n * 131);
+    const pick = a => a[Math.floor(r() * a.length)];
+    const rows = [];
+    const count = 8 + Math.min(10, Math.floor(n / 2));
+    let y = 700;
+    const good = () => pick([['+', 5 + Math.floor(r() * 6) * 5], ['x', 2], ['x', 2], ['x', 3], ['+', 10 + Math.floor(n / 3) * 5]]);
+    const bad = () => pick([['-', 5 + Math.floor(r() * 4) * 5], ['÷', 2], ['-', 10 + n * 2]]);
+    for (let i = 0; i < count; i++) {
+      const kind = i === 0 ? 'gates' : pick(['gates', 'gates', 'gates', 'enemy', 'trap', n > 3 ? 'enemy' : 'gates']);
+      const side = r() < 0.5 ? 0 : 1;
+      if (kind === 'gates') {
+        const a = good();
+        const b = r() < 0.35 + Math.min(0.35, n * 0.02) ? bad() : good();
+        const left = side ? a : b, right = side ? b : a;
+        rows.push({ kind, y, gates: [{ op: left[0], n: left[1] }, { op: right[0], n: right[1] }] });
+      } else if (kind === 'enemy') {
+        rows.push({ kind, y, side, n: 5 + Math.floor(r() * (6 + n * 3)), gold: 0 });
+      } else {
+        rows.push({ kind, y, side, frac: 0.25 + Math.min(0.25, n * 0.01) });
+      }
+      // Coins sit beside hazards so dodging and grabbing compete.
+      if (r() < 0.5) rows.push({ kind: 'coin', y: y - 110, x: 60 + r() * 240, taken: false, value: 3 + Math.floor(n / 2) });
+      y += 300;
+    }
+    // Best route with no upgrades: pick the better gate, dodge everything.
+    let best = 10;
+    for (const row of rows) if (row.kind === 'gates') best = Math.max(applyOpBase(best, row.gates[0]), applyOpBase(best, row.gates[1]));
+    const factor = 0.55 + Math.min(0.33, n * 0.015);
+    const castle = { y: y + 150, n: Math.max(8, Math.round(best * factor)) };
+    return { n, rows, castle, best, length: castle.y };
+  }
+  function applyOpBase(n, g) {
+    if (g.op === '+') return n + g.n;
+    if (g.op === 'x') return n * g.n;
+    if (g.op === '-') return Math.max(0, n - g.n);
+    return Math.floor(n / g.n);
+  }
+
+  // ---- Run state ----
+  let run = null, scale = 1, last = 0, targetX = W / 2;
+  window.__lordRun = () => run;
+
+  function startRun() {
+    const L = buildLevel(meta.level);
+    run = { L, dist: 0, army: startArmy(), x: W / 2, phase: 'run', gold: 0, floats: [], shake: 0, battle: null, killed: 0 };
+    targetX = W / 2;
+    $('hub').classList.remove('show');
+  }
+
+  const crowdR = n => Math.min(70, 10 + Math.sqrt(n) * 3.2);
+  const sideOf = x => (x < W / 2 ? 0 : 1);
+  const float = (text, color) => run.floats.push({ text, color, t: 0, x: run.x, y: PLAYER_Y - 50 });
+
+  function update(dt) {
+    if (!run) return;
+    for (const f of run.floats) f.t += dt;
+    run.floats = run.floats.filter(f => f.t < 1);
+    run.shake = Math.max(0, run.shake - dt * 3);
+    if (run.phase === 'run') {
+      run.x += (targetX - run.x) * Math.min(1, dt * 12);
+      const before = run.dist;
+      run.dist += SPEED * dt;
+      for (const row of run.L.rows) {
+        if (row.done || row.y > run.dist || row.y <= before - 1) continue;
+        if (row.kind === 'coin') {
+          if (Math.abs(run.x - row.x) < crowdR(run.army) + 14) { row.done = true; run.gold += row.value; float('+' + row.value + ' 金', '#ffb400'); }
+          continue;
+        }
+        row.done = true;
+        if (row.kind === 'gates') {
+          const g = row.gates[sideOf(run.x)];
+          const after = applyOp(run.army, g);
+          float(`${g.op === 'x' ? 'x' : g.op}${g.n}${g.op === '+' && mageBonus() ? '+' + mageBonus() : ''}`, after >= run.army ? '#39b56a' : '#e8473f');
+          run.army = after;
+          row.chosen = sideOf(run.x);
+        } else if (row.kind === 'enemy' && sideOf(run.x) === row.side) {
+          let foes = row.n;
+          const shot = Math.floor(foes * Math.min(0.6, (meta.heroes.archer || 0) * 0.1));
+          foes -= shot;
+          run.army -= foes;
+          run.killed += row.n;
+          run.gold += row.n;
+          run.shake = 1;
+          float(`衝鋒！-${foes}`, '#e8473f');
+        } else if (row.kind === 'trap') {
+          const edge = row.side ? W / 2 : W / 2;
+          const inside = row.side ? run.x + crowdR(run.army) * 0.5 > edge : run.x - crowdR(run.army) * 0.5 < edge;
+          if (inside) {
+            const lost = Math.max(1, Math.round(run.army * row.frac));
+            run.army -= lost;
+            run.shake = 1;
+            float(`陷阱 -${lost}`, '#e8473f');
+          }
+        }
+        if (run.army <= 0) { run.army = 0; return finish(false); }
+      }
+      if (run.dist >= run.L.castle.y - 120) startBattle();
+    } else if (run.phase === 'battle') {
+      const b = run.battle;
+      b.t += dt;
+      if (b.t < 0.8) return;
+      const step = Math.max(1, Math.ceil(Math.min(run.army, b.foes) * dt * 2.2));
+      run.army -= step;
+      b.foes -= step;
+      if (b.foes <= 0 || run.army <= 0) finish(b.foes <= 0 && run.army > 0);
+    }
+  }
+
+  function startBattle() {
+    run.phase = 'battle';
+    let foes = run.L.castle.n;
+    const g = Math.floor(foes * Math.min(0.5, meta.griffin * 0.08));
+    const a = Math.floor((foes - g) * Math.min(0.6, (meta.heroes.archer || 0) * 0.1));
+    if (g) float(`獅鷲俯衝 -${g}`, '#ffb400');
+    if (a) setTimeout(() => run && float(`箭雨 -${a}`, '#39b56a'), 300);
+    run.battle = { t: 0, foes: foes - g - a, start: foes };
+  }
+
+  function finish(win) {
+    if (run.phase === 'end') return;
+    run.phase = 'end';
+    const L = run.L;
+    const bonus = 1 + meta.income * 0.15 + titleIndex() * 0.1;
+    let reward = 0, stars = 0;
+    if (win) {
+      const ratio = run.army / Math.max(1, L.castle.n);
+      stars = ratio >= 0.5 ? 3 : ratio >= 0.2 ? 2 : 1;
+      reward = Math.round((30 + L.n * 12 + run.gold + run.army) * bonus);
+      meta.gold += reward;
+      meta.deeds += 1;
+      meta.best[L.n] = Math.max(meta.best[L.n] || 0, stars);
+      if (meta.level === L.n) meta.level++;
+    } else {
+      reward = Math.round((run.gold + 5) * bonus * 0.5);
+      meta.gold += reward;
+    }
+    save();
+    const titleBefore = TITLES[titleIndex()][0];
+    setTimeout(() => {
+      $('endCard').innerHTML = `<h2>${win ? '攻下城堡！' : '全軍覆沒'}</h2>
+        ${win ? `<div class="stars">${'★'.repeat(stars)}${'☆'.repeat(3 - stars)}</div>` : ''}
+        <div class="sub">${win ? `剩餘兵力 ${run.army}，敵軍 ${L.castle.n}` : `敵方城堡守軍 ${L.castle.n}。試著選擇更好的路線，或回城升級。`}</div>
+        <div class="rank">獲得 <b>${reward}</b> 金${win ? '、地契 1 張' : ''}</div>
+        <div class="sub">爵位：${titleBefore}</div>
+        <button class="primary big" id="btnHub">回到城鎮</button>
+        <button class="big" id="btnAgain">${win ? '下一關' : '再試一次'}</button>`;
+      $('endBox').classList.add('show');
+      $('btnHub').onclick = () => { $('endBox').classList.remove('show'); run = null; showHub('heroes'); };
+      $('btnAgain').onclick = () => { $('endBox').classList.remove('show'); startRun(); };
+      hud();
+    }, 900);
+  }
+
+  // ---- Input ----
+  const toX = ev => { const r = cv.getBoundingClientRect(); return Math.max(20, Math.min(W - 20, (ev.clientX - r.left) / scale)); };
+  let dragging = false, dragFrom = 0, dragX = 0;
+  cv.addEventListener('pointerdown', ev => { dragging = true; dragFrom = toX(ev); dragX = targetX; cv.setPointerCapture(ev.pointerId); });
+  cv.addEventListener('pointermove', ev => { if (dragging) targetX = Math.max(24, Math.min(W - 24, dragX + (toX(ev) - dragFrom) * 1.4)); });
+  const up = () => (dragging = false);
+  cv.addEventListener('pointerup', up);
+  cv.addEventListener('pointercancel', up);
+  document.addEventListener('keydown', e => {
+    if (e.key === 'ArrowLeft') targetX = W * 0.25;
+    if (e.key === 'ArrowRight') targetX = W * 0.75;
+  });
+
+  // ---- Drawing ----
+  function fit() {
+    const availH = window.innerHeight - cv.getBoundingClientRect().top - 12;
+    const availW = Math.min(window.innerWidth - 24, 480);
+    scale = Math.min(availW / W, availH / H);
+    const dpr = window.devicePixelRatio || 1;
+    cv.style.width = W * scale + 'px';
+    cv.style.height = H * scale + 'px';
+    cv.width = Math.round(W * scale * dpr);
+    cv.height = Math.round(H * scale * dpr);
+    ctx.setTransform(scale * dpr, 0, 0, scale * dpr, 0, 0);
+  }
+  function rr(x, y, w, h, r) {
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.arcTo(x + w, y, x + w, y + h, r);
+    ctx.arcTo(x + w, y + h, x, y + h, r);
+    ctx.arcTo(x, y + h, x, y, r);
+    ctx.arcTo(x, y, x + w, y, r);
+    ctx.closePath();
+  }
+  function crowd(cx, cy, n, color, helmet, seed) {
+    const shown = Math.min(n, 120);
+    const R = crowdR(n);
+    const r = rng(seed);
+    for (let i = 0; i < shown; i++) {
+      const a = r() * Math.PI * 2, d = Math.sqrt(r()) * R;
+      const x = cx + Math.cos(a) * d, y = cy + Math.sin(a) * d * 0.6;
+      ctx.fillStyle = color;
+      ctx.beginPath();
+      ctx.arc(x, y, 5, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = helmet;
+      ctx.fillRect(x - 4, y - 7, 8, 3);
+    }
+  }
+  function label(text, x, y, bg) {
+    ctx.font = '900 18px system-ui, sans-serif';
+    const w = ctx.measureText(text).width + 16;
+    ctx.fillStyle = bg;
+    rr(x - w / 2, y - 14, w, 26, 13);
+    ctx.fill();
+    ctx.fillStyle = '#fff';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(text, x, y);
+  }
+
+  function draw(t) {
+    ctx.clearRect(0, 0, W, H);
+    // Grass and road
+    ctx.fillStyle = '#7cc66d';
+    ctx.fillRect(0, 0, W, H);
+    ctx.fillStyle = '#d9c08a';
+    ctx.fillRect(20, 0, W - 40, H);
+    const off = run ? run.dist % 40 : (t * 0.05) % 40;
+    ctx.fillStyle = '#c9ad74';
+    for (let y = -40 + off; y < H; y += 40) { ctx.fillRect(W / 2 - 3, y, 6, 20); }
+    ctx.fillStyle = '#5aa84d';
+    for (let y = -60 + (off * 1.5) % 60; y < H; y += 60) { ctx.beginPath(); ctx.arc(8, y, 10, 0, 7); ctx.arc(W - 8, y + 30, 10, 0, 7); ctx.fill(); }
+
+    if (!run) {
+      ctx.fillStyle = '#3a2a14aa';
+      ctx.font = '800 16px system-ui, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('最強領主', W / 2, H / 2);
+      return;
+    }
+    const sy = run.shake ? (Math.random() - 0.5) * 6 * run.shake : 0;
+    ctx.save();
+    ctx.translate(0, sy);
+    const toScreen = wy => PLAYER_Y - (wy - run.dist);
+
+    for (const row of run.L.rows) {
+      const y = toScreen(row.y);
+      if (y < -80 || y > H + 80) continue;
+      if (row.kind === 'gates') {
+        row.gates.forEach((g, i) => {
+          const good = g.op === '+' || g.op === 'x';
+          const x = i ? W / 2 + 4 : 24;
+          const w = W / 2 - 28;
+          ctx.globalAlpha = row.done && row.chosen !== i ? 0.35 : 1;
+          ctx.fillStyle = good ? '#39b56acc' : '#e8473fcc';
+          rr(x, y - 22, w, 44, 10);
+          ctx.fill();
+          ctx.strokeStyle = '#fff';
+          ctx.lineWidth = 3;
+          ctx.stroke();
+          ctx.fillStyle = '#fff';
+          ctx.font = '900 24px system-ui, sans-serif';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillText(`${g.op === 'x' ? 'x' : g.op}${g.n}`, x + w / 2, y + 1);
+          ctx.globalAlpha = 1;
+        });
+      } else if (row.kind === 'enemy' && !row.done) {
+        const cx = row.side ? W * 0.75 : W * 0.25;
+        crowd(cx, y, row.n, '#e8473f', '#7a1a14', row.y);
+        label(String(row.n), cx, y - crowdR(row.n) * 0.6 - 18, '#e8473f');
+      } else if (row.kind === 'trap') {
+        const x0 = row.side ? W / 2 : 20, w = W / 2 - 20;
+        ctx.fillStyle = '#6b6b6b';
+        ctx.fillRect(x0, y - 6, w, 12);
+        const spin = (t / 120) % (Math.PI * 2);
+        for (let k = 0; k < 3; k++) {
+          const cx = x0 + w * (0.2 + k * 0.3);
+          ctx.save();
+          ctx.translate(cx, y);
+          ctx.rotate(spin + k);
+          ctx.fillStyle = '#b8b8b8';
+          for (let b = 0; b < 4; b++) { ctx.rotate(Math.PI / 2); ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(18, -5); ctx.lineTo(18, 5); ctx.fill(); }
+          ctx.restore();
+        }
+      } else if (row.kind === 'coin' && !row.done) {
+        ctx.fillStyle = '#ffcf3f';
+        ctx.beginPath();
+        ctx.arc(row.x, y, 10, 0, 7);
+        ctx.fill();
+        ctx.strokeStyle = '#d98a00';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+      }
+    }
+
+    // Castle
+    const cy = toScreen(run.L.castle.y);
+    if (cy > -200) {
+      ctx.fillStyle = '#9a8f86';
+      ctx.fillRect(60, cy - 120, W - 120, 110);
+      for (let x = 60; x < W - 60; x += 30) ctx.fillRect(x, cy - 140, 18, 22);
+      ctx.fillStyle = '#5a4a40';
+      rr(W / 2 - 30, cy - 70, 60, 60, 30);
+      ctx.fill();
+      ctx.fillStyle = '#e8473f';
+      ctx.beginPath();
+      ctx.moveTo(W / 2, cy - 200);
+      ctx.lineTo(W / 2 + 30, cy - 188);
+      ctx.lineTo(W / 2, cy - 176);
+      ctx.fill();
+      ctx.fillStyle = '#5a4a40';
+      ctx.fillRect(W / 2 - 2, cy - 200, 4, 62);
+      const foes = run.battle ? Math.max(0, run.battle.foes) : run.L.castle.n;
+      if (foes > 0) crowd(W / 2, cy + 20, foes, '#e8473f', '#7a1a14', 77);
+      label(`守軍 ${foes}`, W / 2, cy - 230, '#e8473f');
+    }
+
+    // Player army
+    if (run.army > 0) crowd(run.x, PLAYER_Y, run.army, '#2f7dff', '#ffd23f', 5);
+    label(String(run.army), run.x, PLAYER_Y + crowdR(run.army) * 0.6 + 24, '#2f7dff');
+    for (const f of run.floats) {
+      ctx.globalAlpha = 1 - f.t;
+      ctx.fillStyle = f.color;
+      ctx.font = '900 22px system-ui, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText(f.text, f.x, f.y - f.t * 50);
+      ctx.globalAlpha = 1;
+    }
+    ctx.restore();
+
+    if (run.dist < 120) {
+      ctx.fillStyle = '#3a2a14cc';
+      ctx.font = '800 16px system-ui, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('左右滑動選擇路線', W / 2, 60);
+    }
+    // Progress bar
+    ctx.fillStyle = '#0003';
+    rr(40, 14, W - 80, 10, 5);
+    ctx.fill();
+    ctx.fillStyle = '#ffb400';
+    rr(40, 14, (W - 80) * Math.min(1, run.dist / run.L.castle.y), 10, 5);
+    ctx.fill();
+  }
+
+  function frame(now) {
+    const dt = Math.min(0.05, (now - last) / 1000 || 0);
+    last = now;
+    update(dt);
+    draw(now);
+    requestAnimationFrame(frame);
+  }
+
+  // ---- Town hub ----
+  function hud() {
+    $('lvl').textContent = run ? run.L.n : meta.level;
+    $('gold').textContent = meta.gold;
+    $('deeds').textContent = meta.deeds;
+  }
+
+  function showHub(tab = 'heroes') {
+    hud();
+    const ti = titleIndex();
+    const next = TITLES[ti + 1];
+    const pct = next ? ((meta.deeds - TITLES[ti][1]) / (next[1] - TITLES[ti][1])) * 100 : 100;
+    const rowHTML = (key, ic, color, name, lv, desc, cost, maxed) => `<div class="row"><div class="ic" style="background:${color}">${ic}</div>
+      <div class="tx"><b>${name}${lv ? ` Lv.${lv}` : ''}</b>${desc}</div>
+      <button class="primary" data-buy="${key}" ${maxed || meta.gold < cost ? 'disabled' : ''}>${maxed ? '已滿級' : `${lv || key.startsWith('up') || key === 'griffin' ? '升級' : '招募'} ${cost}`}</button></div>`;
+    let body = '';
+    if (tab === 'heroes') {
+      body = Object.entries(HEROES).map(([k, h]) => {
+        const lv = meta.heroes[k] || 0;
+        return rowHTML('hero:' + k, h.ch, h.color, h.name, lv, lv ? h.desc(lv) + `（下一級：${h.desc(lv + 1)}）` : `尚未招募。${h.desc(1)}`, h.cost(lv), lv >= 6);
+      }).join('');
+    } else if (tab === 'town') {
+      body = Object.entries(UPGRADES).map(([k, u]) => rowHTML('up:' + k, u.ch, u.color, u.name, meta[k], `${u.desc(meta[k])} → ${u.desc(meta[k] + 1)}`, u.cost(meta[k]), meta[k] >= 20)).join('');
+      body += rowHTML('griffin', '鷲', '#b8742a', '獅鷲', meta.griffin, meta.griffin ? `攻城時俯衝擊殺守軍 ${meta.griffin * 8}%` : '尚未孵化。孵化後攻城時會俯衝擊殺守軍。', griffinCost(meta.griffin), meta.griffin >= 6);
+    } else {
+      body = `<ul class="help">
+        <li>左右滑動（或方向鍵）控制軍隊，綠色機關增加兵力，紅色機關減少兵力。</li>
+        <li>紅色敵軍可以閃避，也可以衝鋒擊敗他們換取金幣，但會損失兵力。</li>
+        <li>旋轉刀刃陷阱會削減一部分兵力，記得閃開。路上的金幣可以順手撿。</li>
+        <li>抵達終點後與城堡守軍交戰，兵力多於守軍就能攻下城堡，獲得金幣與地契。</li>
+        <li>回到城鎮招募英雄、孵化獅鷲、徵召士兵。地契累積會提升爵位，爵位越高收入越多。</li>
+      </ul>`;
+    }
+    $('hubCard').innerHTML = `<h2>${TITLES[ti][0]}的城鎮</h2>
+      <div class="rank">爵位 <b>${TITLES[ti][0]}</b>${next ? `　下一級：${next[0]}（地契 ${meta.deeds} / ${next[1]}）` : '　已是最高爵位'}
+        <div class="bar"><div style="width:${Math.min(100, pct)}%"></div></div></div>
+      <button class="primary big" id="btnGo">出征第 ${meta.level} 關</button>
+      <div class="sub" style="margin-top:6px">出征兵力 ${startArmy()}　·　金幣 ${meta.gold}</div>
+      <div class="tabs"><button data-tab="heroes" class="${tab === 'heroes' ? 'on' : ''}">英雄</button><button data-tab="town" class="${tab === 'town' ? 'on' : ''}">城鎮</button><button data-tab="help" class="${tab === 'help' ? 'on' : ''}">說明</button></div>
+      <div class="list">${body}</div>`;
+    $('hub').classList.add('show');
+    $('btnGo').onclick = startRun;
+    document.querySelectorAll('[data-tab]').forEach(b => (b.onclick = () => showHub(b.dataset.tab)));
+    document.querySelectorAll('[data-buy]').forEach(b => (b.onclick = () => buy(b.dataset.buy, tab)));
+  }
+
+  function buy(key, tab) {
+    let cost;
+    if (key.startsWith('hero:')) {
+      const k = key.slice(5), lv = meta.heroes[k] || 0;
+      cost = HEROES[k].cost(lv);
+      if (meta.gold < cost) return;
+      meta.heroes[k] = lv + 1;
+    } else if (key.startsWith('up:')) {
+      const k = key.slice(3);
+      cost = UPGRADES[k].cost(meta[k]);
+      if (meta.gold < cost) return;
+      meta[k]++;
+    } else {
+      cost = griffinCost(meta.griffin);
+      if (meta.gold < cost) return;
+      meta.griffin++;
+    }
+    meta.gold -= cost;
+    save();
+    showHub(tab);
+  }
+
+  window.addEventListener('resize', fit);
+  fit();
+  showHub(store.get('seen', false) ? 'heroes' : 'help');
+  store.set('seen', true);
+  requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>
