@@ -1,0 +1,366 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Count and Bounce</title>
+<meta name="description" content="Count and Bounce 網頁版：倒出彈珠穿過倍增門，把足夠的彈珠接進杯子裡。">
+<style>
+  :root {
+    --bg1: #7ad0ff;
+    --bg2: #c9a7ff;
+    --text: #1f2440;
+    --panel: #ffffff;
+    --accent: #ff4f8b;
+    --muted: #6b7090;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; }
+  body {
+    background: linear-gradient(180deg, var(--bg1), var(--bg2));
+    color: var(--text); font-family: system-ui, -apple-system, "Segoe UI", "Noto Sans TC", sans-serif;
+    display: flex; flex-direction: column; align-items: center; overflow: hidden;
+    user-select: none; -webkit-user-select: none; touch-action: none;
+  }
+  nav.games { width: 100%; max-width: 480px; padding: 8px 16px 0; font-size: 13px; display: flex; gap: 12px; }
+  nav.games a { color: var(--text); opacity: .7; text-decoration: none; font-weight: 600; }
+  nav.games a.on { opacity: 1; text-decoration: underline; }
+  header { width: 100%; max-width: 480px; padding: 6px 16px; display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+  h1 { margin: 0; font-size: 20px; font-weight: 900; letter-spacing: .5px; }
+  .tools { display: flex; gap: 6px; }
+  button {
+    font: inherit; font-weight: 700; font-size: 14px; border: 0; border-radius: 12px; padding: 8px 12px;
+    background: var(--panel); color: var(--text); box-shadow: 0 3px 0 #0002; cursor: pointer;
+  }
+  button.primary { background: var(--accent); color: #fff; }
+  button:active { transform: translateY(2px); box-shadow: 0 1px 0 #0002; }
+  .bar { width: 100%; max-width: 480px; padding: 0 16px 6px; }
+  .progress { height: 22px; border-radius: 11px; background: #ffffff80; overflow: hidden; position: relative; }
+  .progress div { height: 100%; width: 0; background: linear-gradient(90deg, #3ddc84, #19b86a); transition: width .15s; }
+  .progress span { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 13px; }
+  main { flex: 1; width: 100%; display: flex; justify-content: center; align-items: flex-start; padding-bottom: 12px; min-height: 0; }
+  canvas { border-radius: 18px; box-shadow: 0 10px 30px #0003; background: #fdfcff; touch-action: none; }
+  .overlay { position: fixed; inset: 0; background: #1f244099; display: none; align-items: center; justify-content: center; padding: 16px; z-index: 5; }
+  .overlay.show { display: flex; }
+  .card { background: var(--panel); border-radius: 20px; padding: 22px; width: 100%; max-width: 360px; text-align: center; max-height: 88vh; overflow: auto; }
+  .card h2 { margin: 0 0 6px; }
+  .card p { color: var(--muted); margin: 0 0 14px; line-height: 1.5; }
+  .stars { font-size: 30px; color: #ffb400; letter-spacing: 6px; }
+  .row { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
+  #levels { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; margin: 12px 0; }
+  #levels button { padding: 8px 0; line-height: 1.2; background: #eef0fb; }
+  #levels button.done { background: #3ddc84; }
+  #levels button.current { outline: 2px solid var(--accent); }
+  #levels small { display: block; font-size: 10px; min-height: 12px; }
+  .help { text-align: left; color: var(--muted); font-size: 14px; padding-left: 18px; }
+  .help li { margin-bottom: 4px; }
+</style>
+</head>
+<body>
+<nav class="games"><a href="../">Block Out</a><a href="../sultan/">蘇丹的遊戲</a><a class="on" href="./">Count and Bounce</a></nav>
+<header>
+  <h1>第 <span id="lvl">1</span> 關</h1>
+  <div class="tools">
+    <button id="btnRestart">重來</button>
+    <button id="btnLevels">選關</button>
+    <button id="btnHelp">說明</button>
+  </div>
+</header>
+<div class="bar"><div class="progress"><div id="fill"></div><span id="count">0 / 0</span></div></div>
+<main><canvas id="cv"></canvas></main>
+
+<div class="overlay" id="resultBox">
+  <div class="card">
+    <h2 id="resTitle"></h2>
+    <div class="stars" id="resStars"></div>
+    <p id="resText"></p>
+    <div class="row">
+      <button id="btnRetry">再試一次</button>
+      <button class="primary" id="btnNext">下一關</button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="levelBox">
+  <div class="card">
+    <h2>選擇關卡</h2>
+    <div id="levels"></div>
+    <button id="btnCloseLevels">關閉</button>
+  </div>
+</div>
+
+<div class="overlay" id="helpBox">
+  <div class="card">
+    <h2>玩法</h2>
+    <ul class="help">
+      <li>左右拖動調整出球口位置，按住畫面就會倒出彈珠。</li>
+      <li>彈珠穿過「x2」「+5」等門就會增加數量，每顆彈珠每道門只算一次。</li>
+      <li>碰到紅色尖刺的彈珠會消失，白色圓釘和灰色平台會讓彈珠彈開。</li>
+      <li>把足夠數量的彈珠接進底部的杯子即過關，杯子可能會左右移動。</li>
+    </ul>
+    <button class="primary" id="btnCloseHelp">開始</button>
+  </div>
+</div>
+
+<script src="engine.js"></script>
+<script src="levels.js"></script>
+<script>
+(() => {
+  const B = window.Bounce, LEVELS = window.BOUNCE_LEVELS;
+  const $ = id => document.getElementById(id);
+  const cv = $('cv'), ctx = cv.getContext('2d');
+  const store = {
+    get(k, d) { try { const v = localStorage.getItem('bounce.' + k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } },
+    set(k, v) { try { localStorage.setItem('bounce.' + k, JSON.stringify(v)); } catch (e) {} },
+  };
+
+  let index = Math.min(store.get('level', 0), LEVELS.length - 1);
+  let world, aimX = B.W / 2, pouring = false, started = false, ended = false, scale = 1, acc = 0, last = 0;
+
+  function fit() {
+    const availH = window.innerHeight - cv.getBoundingClientRect().top - 12;
+    const availW = Math.min(window.innerWidth - 24, 480);
+    scale = Math.min(availW / B.W, availH / B.H);
+    const dpr = window.devicePixelRatio || 1;
+    cv.style.width = B.W * scale + 'px';
+    cv.style.height = B.H * scale + 'px';
+    cv.width = Math.round(B.W * scale * dpr);
+    cv.height = Math.round(B.H * scale * dpr);
+    ctx.setTransform(scale * dpr, 0, 0, scale * dpr, 0, 0);
+  }
+
+  function load(i) {
+    index = i;
+    store.set('level', i);
+    world = B.createWorld(LEVELS[i]);
+    aimX = B.W / 2;
+    pouring = false;
+    started = false;
+    ended = false;
+    $('lvl').textContent = i + 1;
+    hud();
+  }
+
+  function hud() {
+    const L = LEVELS[index];
+    $('count').textContent = `${world.collected} / ${L.target}`;
+    $('fill').style.width = Math.min(100, (world.collected / L.target) * 100) + '%';
+  }
+
+  const toLocal = ev => {
+    const r = cv.getBoundingClientRect();
+    return Math.max(B.R, Math.min(B.W - B.R, (ev.clientX - r.left) / scale));
+  };
+  cv.addEventListener('pointerdown', ev => {
+    if (ended) return;
+    cv.setPointerCapture(ev.pointerId);
+    aimX = toLocal(ev);
+    pouring = true;
+    started = true;
+  });
+  cv.addEventListener('pointermove', ev => { if (!ended) aimX = toLocal(ev); });
+  const stop = () => (pouring = false);
+  cv.addEventListener('pointerup', stop);
+  cv.addEventListener('pointercancel', stop);
+  document.addEventListener('keydown', e => {
+    if (e.key === 'ArrowLeft') aimX = Math.max(B.R, aimX - 12);
+    if (e.key === 'ArrowRight') aimX = Math.min(B.W - B.R, aimX + 12);
+    if (e.key === ' ') { pouring = true; started = true; e.preventDefault(); }
+  });
+  document.addEventListener('keyup', e => { if (e.key === ' ') pouring = false; });
+
+  function stars(n, target) { return n >= target * 1.45 ? 3 : n >= target * 1.2 ? 2 : n >= target ? 1 : 0; }
+
+  function finish() {
+    ended = true;
+    pouring = false;
+    const L = LEVELS[index];
+    const s = stars(world.collected, L.target);
+    if (s) {
+      const best = store.get('best', {});
+      best[index] = Math.max(best[index] || 0, world.collected);
+      store.set('best', best);
+    }
+    $('resTitle').textContent = s ? '過關！' : '差一點！';
+    $('resStars').textContent = s ? '★'.repeat(s) + '☆'.repeat(3 - s) : '';
+    $('resText').textContent = `接住 ${world.collected} 顆彈珠，目標 ${L.target} 顆。` + (s ? '' : '試著把出球口對準倍增門。');
+    $('btnNext').style.display = s ? '' : 'none';
+    $('btnNext').textContent = index === LEVELS.length - 1 ? '回到第 1 關' : '下一關';
+    setTimeout(() => $('resultBox').classList.add('show'), 400);
+  }
+
+  // ---- Drawing ----
+  function roundRect(x, y, w, h, r) {
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.arcTo(x + w, y, x + w, y + h, r);
+    ctx.arcTo(x + w, y + h, x, y + h, r);
+    ctx.arcTo(x, y + h, x, y, r);
+    ctx.arcTo(x, y, x + w, y, r);
+    ctx.closePath();
+  }
+
+  function draw() {
+    const L = world.level, t = world.t;
+    ctx.clearRect(0, 0, B.W, B.H);
+    const bg = ctx.createLinearGradient(0, 0, 0, B.H);
+    bg.addColorStop(0, '#fdfcff');
+    bg.addColorStop(1, '#efe9ff');
+    ctx.fillStyle = bg;
+    ctx.fillRect(0, 0, B.W, B.H);
+
+    // Gates
+    for (const g of world.gates) {
+      const mult = g.op === 'x';
+      const flash = world.pops.some(p => p.gate === g.id && t - p.t < 0.12);
+      ctx.fillStyle = mult ? (flash ? '#7cf0b0' : '#22c06add') : (flash ? '#8fd0ff' : '#2f95f0dd');
+      roundRect(g.x, g.y - 8, g.w, g.h + 16, 8);
+      ctx.fill();
+      ctx.strokeStyle = mult ? '#19b86a' : '#1f7fd6';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+      ctx.fillStyle = '#fff';
+      ctx.font = '900 20px system-ui, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText((mult ? 'x' : '+') + g.n, g.x + g.w / 2, g.y + g.h / 2 + 1);
+    }
+
+    for (const p of L.pegs) {
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+      ctx.fillStyle = '#ffffff';
+      ctx.fill();
+      ctx.strokeStyle = '#b9b3d6';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+    }
+    for (const s of L.walls) {
+      ctx.fillStyle = '#8f8aac';
+      roundRect(s.x, s.y, s.w, s.h, 4);
+      ctx.fill();
+    }
+    for (const k of L.spikes) {
+      ctx.fillStyle = '#ff4d5e';
+      ctx.fillRect(k.x, k.y + k.h / 2, k.w, k.h / 2);
+      ctx.beginPath();
+      for (let x = k.x; x < k.x + k.w - 1; x += 10) {
+        ctx.moveTo(x, k.y + k.h / 2);
+        ctx.lineTo(x + 5, k.y - 2);
+        ctx.lineTo(Math.min(x + 10, k.x + k.w), k.y + k.h / 2);
+      }
+      ctx.fill();
+    }
+
+    // Cup
+    const c = world.cup;
+    ctx.fillStyle = '#ff4f8b';
+    roundRect(c.x, c.y, c.w, c.h, 10);
+    ctx.fill();
+    ctx.fillStyle = '#ffd1e2';
+    roundRect(c.x + 6, c.y + 6, c.w - 12, c.h - 12, 7);
+    ctx.fill();
+    ctx.fillStyle = '#ff4f8b';
+    ctx.font = '900 18px system-ui, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(world.collected, c.x + c.w / 2, c.y + c.h / 2 + 2);
+
+    // Balls
+    ctx.fillStyle = '#ffc21a';
+    ctx.strokeStyle = '#e09b00';
+    ctx.lineWidth = 1.5;
+    for (const b of world.balls) {
+      ctx.beginPath();
+      ctx.arc(b.x, b.y, B.R, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+    }
+    // Pops where balls hit spikes
+    for (const p of world.pops) {
+      if (!p.bad || t - p.t > 0.25) continue;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, 4 + (t - p.t) * 40, 0, Math.PI * 2);
+      ctx.strokeStyle = `rgba(255,77,94,${1 - (t - p.t) * 4})`;
+      ctx.stroke();
+    }
+
+    // Dispenser
+    const y = B.DISPENSER_Y;
+    ctx.strokeStyle = '#1f244033';
+    ctx.setLineDash([4, 6]);
+    ctx.beginPath();
+    ctx.moveTo(aimX, y + 18);
+    ctx.lineTo(aimX, y + 70);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle = '#5b4bff';
+    ctx.beginPath();
+    ctx.moveTo(aimX - 34, y - 34);
+    ctx.lineTo(aimX + 34, y - 34);
+    ctx.lineTo(aimX + 12, y + 8);
+    ctx.lineTo(aimX + 12, y + 16);
+    ctx.lineTo(aimX - 12, y + 16);
+    ctx.lineTo(aimX - 12, y + 8);
+    ctx.closePath();
+    ctx.fill();
+    ctx.fillStyle = '#fff';
+    ctx.font = '900 18px system-ui, sans-serif';
+    ctx.fillText(world.left, aimX, y - 16);
+
+    if (!started) {
+      ctx.fillStyle = '#1f2440aa';
+      ctx.font = '700 16px system-ui, sans-serif';
+      ctx.fillText('按住倒球，左右拖動瞄準', B.W / 2, 320);
+    }
+  }
+
+  function frame(now) {
+    const dt = Math.min(0.05, (now - last) / 1000 || 0);
+    last = now;
+    if (started && !ended) {
+      acc += dt;
+      let n = 0;
+      while (acc >= B.DT && n++ < 10) {
+        B.step(world, { x: aimX, pouring });
+        acc -= B.DT;
+      }
+      hud();
+      if (B.finished(world)) finish();
+    }
+    draw();
+    requestAnimationFrame(frame);
+  }
+
+  function showLevels() {
+    const best = store.get('best', {});
+    const box = $('levels');
+    box.innerHTML = '';
+    LEVELS.forEach((L, i) => {
+      const btn = document.createElement('button');
+      const s = best[i] ? stars(best[i], L.target) : 0;
+      btn.innerHTML = `${i + 1}<small>${s ? '★'.repeat(s) : ''}</small>`;
+      if (s) btn.classList.add('done');
+      if (i === index) btn.classList.add('current');
+      btn.onclick = () => { $('levelBox').classList.remove('show'); load(i); };
+      box.appendChild(btn);
+    });
+    $('levelBox').classList.add('show');
+  }
+
+  $('btnRestart').onclick = () => load(index);
+  $('btnLevels').onclick = showLevels;
+  $('btnCloseLevels').onclick = () => $('levelBox').classList.remove('show');
+  $('btnHelp').onclick = () => $('helpBox').classList.add('show');
+  $('btnCloseHelp').onclick = () => { $('helpBox').classList.remove('show'); store.set('seenHelp', true); };
+  $('btnRetry').onclick = () => { $('resultBox').classList.remove('show'); load(index); };
+  $('btnNext').onclick = () => { $('resultBox').classList.remove('show'); load((index + 1) % LEVELS.length); };
+  window.addEventListener('resize', fit);
+
+  fit();
+  load(index);
+  if (!store.get('seenHelp', false)) $('helpBox').classList.add('show');
+  requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>

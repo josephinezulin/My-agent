@@ -22,6 +22,10 @@ the board and slide each one out through the gate of the same color.
 | site/levels.js | Generated level data (50 levels) |
 | tools/generate-levels.js | Level generator; an exact solver checks every level and sets its par and move limit |
 | site/sultan/index.html | Sultan's Game: weekly orders, rites, side stories and multiple endings |
+| site/bounce/index.html | Count and Bounce: pour balls through multiplier gates into a cup |
+| site/bounce/engine.js | Count and Bounce physics, shared by the page and the level generator |
+| site/bounce/levels.js | Generated Count and Bounce levels (30 levels) |
+| tools/generate-bounce.js | Builds Count and Bounce levels and sets each target by simulating the best aim |
 | .github/workflows/pages.yml | Deploys `site/` to GitHub Pages |
 
 Run locally: open `site/index.html` in a browser.
@@ -30,6 +34,7 @@ Regenerate levels:
 
 ```
 node tools/generate-levels.js > site/levels.js
+node tools/generate-bounce.js > site/bounce/levels.js
 ```
 
 ## Deployment (GitHub Pages via Actions)
