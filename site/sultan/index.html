@@ -4,230 +4,335 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>蘇丹的遊戲</title>
-<meta name="description" content="蘇丹的遊戲 網頁版：七天之內完成蘇丹的旨意，否則人頭落地。">
+<meta name="description" content="蘇丹的遊戲 網頁版：把人物、金幣與物品放進儀式，七天內完成蘇丹的旨意。">
 <style>
   :root {
-    --bg: #1a1012;
-    --panel: #2a1a1d;
-    --panel2: #352226;
-    --line: #5a3a30;
-    --gold: #e0b45a;
-    --gold2: #f5d68c;
+    --desk1: #2b1712;
+    --desk2: #1a0d0a;
+    --felt: #3a1d16;
+    --line: #6b4a2f;
+    --gold: #d9b26a;
+    --gold2: #f3dca0;
+    --ink: #2a1a10;
+    --paper1: #f1e3c4;
+    --paper2: #d9c39a;
     --text: #f1e6d2;
-    --muted: #b3a08a;
-    --red: #d6544a;
-    --green: #6cbf7a;
-    --r1: #9a9a9a;
-    --r2: #c47a3c;
+    --muted: #b8a284;
+    --red: #e0574a;
+    --green: #7ccf86;
+    --r1: #8d8a86;
+    --r2: #b8743a;
     --r3: #c9d2dc;
-    --r4: #f2c84b;
-    --lust: #d4508a;
-    --luxury: #c9a23a;
-    --conquest: #4f8fd6;
-    --slaughter: #c43c3c;
+    --r4: #f0c548;
+    --lust: #c8457f;
+    --luxury: #c99a2e;
+    --conquest: #3f7fc8;
+    --slaughter: #b8322e;
   }
   * { box-sizing: border-box; }
-  html { background: var(--bg); }
+  html { background: var(--desk2); }
   body {
-    margin: 0; min-height: 100vh; color: var(--text); line-height: 1.5;
-    background: radial-gradient(ellipse at top, #3a1f1f, var(--bg) 60%) fixed;
-    font-family: "Noto Serif TC", "Songti TC", serif;
+    margin: 0; min-height: 100vh; color: var(--text); line-height: 1.45;
+    font-family: "Noto Serif TC", "Songti TC", "PMingLiU", serif;
+    background:
+      radial-gradient(ellipse at 50% -10%, #5a2a1e 0%, transparent 60%),
+      repeating-linear-gradient(90deg, #ffffff05 0 2px, transparent 2px 7px),
+      linear-gradient(180deg, var(--desk1), var(--desk2));
+    background-attachment: fixed;
   }
   a { color: var(--gold); }
-  .wrap { max-width: 1080px; margin: 0 auto; padding: 12px 16px 40px; }
-  header { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; }
-  h1 { margin: 0; font-size: 26px; color: var(--gold2); letter-spacing: 4px; }
-  .nav { font-size: 14px; }
-  .stats { display: flex; flex-wrap: wrap; gap: 8px; margin: 10px 0 14px; }
-  .stat { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 6px 12px; font-size: 14px; color: var(--muted); }
-  .stat b { color: var(--gold2); font-size: 18px; margin-left: 4px; }
-  h2 { font-size: 17px; color: var(--gold); margin: 18px 0 8px; border-bottom: 1px solid var(--line); padding-bottom: 4px; }
-  .row { display: flex; flex-wrap: wrap; gap: 10px; }
-  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(150px, 45%), 1fr)); gap: 10px; }
-  .card {
-    background: linear-gradient(180deg, var(--panel2), var(--panel)); border: 1px solid var(--line);
-    border-radius: 12px; padding: 10px 12px; position: relative;
+  .wrap { max-width: 1180px; margin: 0 auto; padding: 10px 14px 220px; }
+  nav.games { font-size: 13px; display: flex; gap: 12px; flex-wrap: wrap; }
+  nav.games a { color: var(--muted); text-decoration: none; }
+  nav.games a.on { color: var(--gold2); }
+  header { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; margin: 8px 0; }
+  h1 { margin: 0; font-size: 26px; color: var(--gold2); letter-spacing: 6px; text-shadow: 0 2px 0 #000; }
+  .hud { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+  .chip { border: 1px solid var(--line); background: #0004; border-radius: 999px; padding: 4px 12px; font-size: 14px; color: var(--muted); }
+  .chip b { color: var(--gold2); margin-left: 4px; }
+  .links { font-size: 14px; display: flex; gap: 10px; }
+  h2 {
+    font-size: 15px; color: var(--gold); margin: 18px 0 8px; letter-spacing: 3px; display: flex; align-items: center; gap: 10px;
   }
-  .sultan { width: 170px; text-align: center; border-width: 2px; }
-  .sultan .type { font-size: 22px; font-weight: 700; letter-spacing: 6px; }
-  .sultan .left { font-size: 13px; color: var(--muted); }
-  .sultan.urgent .left { color: var(--red); font-weight: 700; }
-  .sultan.done { opacity: .45; }
-  .sultan.done::after { content: "已完成"; position: absolute; left: 0; right: 0; bottom: 10px; font-size: 14px; font-weight: 700; color: var(--green); }
-  .rank { display: inline-block; font-size: 12px; padding: 0 8px; border-radius: 10px; color: #1a1012; font-weight: 700; }
-  .rank1 { background: var(--r1); } .rank2 { background: var(--r2); } .rank3 { background: var(--r3); } .rank4 { background: var(--r4); }
-  .rite { cursor: pointer; transition: transform .1s, border-color .1s; }
-  .rite:hover { transform: translateY(-2px); border-color: var(--gold); }
-  .rite h3 { margin: 0 0 4px; font-size: 16px; color: var(--gold2); }
-  .rite p { margin: 0; font-size: 13px; color: var(--muted); }
-  .person h3 { margin: 0; font-size: 15px; display: flex; justify-content: space-between; gap: 6px; }
-  .person .title { font-size: 12px; color: var(--muted); }
-  .person .attrs { display: grid; grid-template-columns: repeat(4, 1fr); gap: 2px; margin-top: 6px; font-size: 12px; text-align: center; }
-  .person .attrs span { background: #0003; border-radius: 6px; padding: 2px 0; }
-  .person.busy { opacity: .5; }
-  .person .tag { font-size: 11px; color: var(--muted); }
-  .person.npc { border-style: dashed; }
+  h2::after { content: ""; flex: 1; height: 1px; background: linear-gradient(90deg, var(--line), transparent); }
+  .rowscroll { display: flex; gap: 12px; overflow-x: auto; padding: 4px 2px 10px; }
+  .rites { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(330px, 100%), 1fr)); gap: 12px; }
+
+  /* Tarot-like cards */
+  .gcard {
+    flex: 0 0 auto; width: 112px; height: 168px; border-radius: 10px; position: relative; color: var(--ink);
+    background: linear-gradient(160deg, var(--paper1), var(--paper2));
+    border: 3px solid var(--r1); box-shadow: 0 6px 14px #000a, inset 0 0 0 2px #fff6, inset 0 0 18px #7a5a2a55;
+    padding: 6px 7px; display: flex; flex-direction: column; align-items: center; cursor: grab; user-select: none; -webkit-user-select: none;
+    touch-action: pan-x; transition: transform .12s, box-shadow .12s;
+  }
+  .gcard:hover { transform: translateY(-3px); }
+  .gcard.sel { box-shadow: 0 0 0 3px var(--gold2), 0 8px 18px #000c; transform: translateY(-5px); }
+  .gcard.locked { filter: grayscale(.7) brightness(.7); cursor: default; }
+  .gcard.npc { border-style: dashed; }
+  .gcard.rank1 { border-color: var(--r1); } .gcard.rank2 { border-color: var(--r2); }
+  .gcard.rank3 { border-color: var(--r3); } .gcard.rank4 { border-color: var(--r4); box-shadow: 0 6px 14px #000a, 0 0 12px #f0c54888, inset 0 0 0 2px #fff6; }
+  .gcard .rk { position: absolute; top: 4px; right: 5px; font-size: 11px; font-weight: 700; padding: 0 5px; border-radius: 6px; color: #1a0d0a; }
+  .rk1 { background: var(--r1); } .rk2 { background: var(--r2); } .rk3 { background: var(--r3); } .rk4 { background: var(--r4); }
+  .gcard .portrait {
+    width: 50px; height: 50px; border-radius: 50%; margin-top: 4px; display: flex; align-items: center; justify-content: center;
+    font-size: 24px; font-weight: 700; color: var(--paper1); background: radial-gradient(circle at 35% 30%, #8a3b2a, #3a120c);
+    border: 2px solid #7a5a2a;
+  }
+  .gcard .nm { font-weight: 700; font-size: 14px; margin-top: 3px; }
+  .gcard .tt { font-size: 11px; color: #6a4a2a; }
+  .gcard .at { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px 4px; font-size: 10.5px; margin-top: 3px; width: 100%; text-align: center; }
+  .gcard .at span b { font-size: 11.5px; }
+  .gcard .tags { display: flex; flex-wrap: wrap; gap: 2px; justify-content: center; margin-top: auto; }
+  .gcard .tags i { font-style: normal; font-size: 10px; background: #5a2a1e; color: var(--paper1); border-radius: 4px; padding: 0 4px; }
+  .gcard .status { position: absolute; left: 0; right: 0; bottom: -2px; text-align: center; font-size: 10px; background: #1a0d0acc; color: var(--gold2); border-radius: 0 0 7px 7px; }
+  .gcard.coin .portrait { background: radial-gradient(circle at 35% 30%, #ffe9a0, #b8862a); color: #5a3a10; border-color: #8a6420; }
+  .gcard.coin .big { font-size: 26px; font-weight: 700; margin-top: 10px; }
+  .gcard.item .portrait { background: radial-gradient(circle at 35% 30%, #4a6aa0, #1a2440); }
+  .gcard.item .desc { font-size: 11px; text-align: center; margin-top: 6px; color: #4a3220; }
+
+  /* Sultan order cards */
+  .order {
+    flex: 0 0 auto; width: 120px; height: 180px; border-radius: 12px; position: relative; text-align: center;
+    background: linear-gradient(170deg, #2a1410, #120806); border: 3px solid var(--r1); box-shadow: 0 8px 16px #000c, inset 0 0 0 2px #d9b26a33;
+    padding: 10px 6px; display: flex; flex-direction: column; align-items: center; justify-content: space-between;
+  }
+  .order .seal { font-size: 11px; color: var(--muted); letter-spacing: 2px; }
+  .order .type { font-size: 30px; font-weight: 700; line-height: 1.15; display: flex; flex-direction: column; margin: 4px 0; }
+  .order .left { font-size: 12px; color: var(--muted); }
+  .order.urgent .left { color: var(--red); font-weight: 700; }
+  .order.done { opacity: .45; }
+  .order.done .left { color: var(--green); }
+
+  /* Rites */
+  .rite {
+    background: linear-gradient(180deg, #3b2018, #24120d); border: 1px solid var(--line); border-radius: 14px; padding: 12px;
+    box-shadow: 0 6px 16px #0008, inset 0 0 0 1px #d9b26a22;
+  }
+  .rite.running { border-color: var(--gold); }
+  .rite .top { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+  .rite h3 { margin: 0; color: var(--gold2); font-size: 17px; letter-spacing: 2px; }
+  .rite .days { font-size: 12px; color: var(--muted); }
+  .rite p { margin: 4px 0 8px; font-size: 13px; color: var(--muted); }
+  .slots { display: flex; gap: 8px; flex-wrap: wrap; }
+  .slot {
+    width: 70px; height: 96px; border-radius: 8px; border: 2px dashed #8a6a48; background: #0003; position: relative;
+    display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; font-size: 11px; color: var(--muted); padding: 4px; cursor: pointer;
+  }
+  .slot.req { border-color: var(--gold); }
+  .slot.hover { background: #d9b26a33; border-style: solid; }
+  .slot.filled { border-style: solid; background: linear-gradient(160deg, var(--paper1), var(--paper2)); color: var(--ink); font-weight: 700; font-size: 12px; }
+  .slot.filled small { display: block; font-weight: 400; font-size: 10px; color: #6a4a2a; }
+  .slot.filled.coin { background: radial-gradient(circle at 40% 35%, #ffe9a0, #c99a3a); }
+  .rite .ctl { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-top: 8px; font-size: 13px; }
+  .rite select { font: inherit; font-size: 13px; background: #0006; color: var(--text); border: 1px solid var(--line); border-radius: 6px; padding: 3px 6px; }
+  .rite .odds { color: var(--muted); flex: 1; min-width: 140px; }
+  .rite .odds b { color: var(--gold2); }
   button {
-    font: inherit; color: #1a1012; background: var(--gold); border: 0; border-radius: 8px;
-    padding: 8px 16px; font-weight: 700; cursor: pointer;
+    font: inherit; font-weight: 700; font-size: 14px; color: #1a0d0a; background: linear-gradient(180deg, #f3dca0, #c99a4a);
+    border: 1px solid #7a5a2a; border-radius: 8px; padding: 7px 14px; cursor: pointer; box-shadow: 0 2px 0 #000a;
   }
-  button.ghost { background: transparent; color: var(--gold); border: 1px solid var(--gold); }
+  button.ghost { background: transparent; color: var(--gold2); border-color: var(--gold); box-shadow: none; }
   button:disabled { opacity: .4; cursor: default; }
-  .endday { margin-top: 14px; display: flex; gap: 10px; flex-wrap: wrap; }
-  #log { background: #0004; border: 1px solid var(--line); border-radius: 10px; padding: 8px 12px; max-height: 260px; overflow: auto; font-size: 14px; }
-  #log div { padding: 3px 0; border-bottom: 1px dashed #ffffff12; }
-  #log .good { color: var(--green); } #log .bad { color: var(--red); } #log .gold { color: var(--gold2); }
-  .overlay { position: fixed; inset: 0; background: #000b; display: none; align-items: center; justify-content: center; padding: 16px; z-index: 10; }
-  .overlay.show { display: flex; }
-  .modal { background: var(--panel); border: 1px solid var(--gold); border-radius: 14px; padding: 18px; width: 100%; max-width: 460px; max-height: 90vh; overflow: auto; }
-  .modal h3 { margin: 0 0 4px; color: var(--gold2); }
-  .modal .desc { color: var(--muted); font-size: 14px; margin-bottom: 10px; }
-  .modal label.opt { display: flex; align-items: center; gap: 8px; padding: 6px 8px; border-radius: 8px; background: #0003; margin-bottom: 4px; cursor: pointer; font-size: 14px; }
-  .modal select { width: 100%; font: inherit; padding: 6px; border-radius: 8px; background: #0005; color: var(--text); border: 1px solid var(--line); margin-bottom: 8px; }
-  .modal .field { font-size: 13px; color: var(--muted); margin: 8px 0 4px; }
-  .chance { margin: 12px 0; padding: 8px 10px; border-radius: 8px; background: #0004; font-size: 14px; }
-  .chance b { color: var(--gold2); }
-  .modal .btns { display: flex; gap: 8px; justify-content: flex-end; }
-  .end { text-align: center; }
-  .end h3 { font-size: 26px; }
-  .help { font-size: 14px; color: var(--muted); }
-  .events { grid-template-columns: repeat(auto-fill, minmax(min(280px, 100%), 1fr)); }
-  .event { border-color: var(--gold); }
-  .event h3 { margin: 0 0 4px; font-size: 16px; color: var(--gold2); display: flex; justify-content: space-between; gap: 8px; }
-  .event h3 .left { font-size: 12px; color: var(--muted); font-weight: 400; }
+
+  .events { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(300px, 100%), 1fr)); gap: 12px; }
+  .event {
+    color: var(--ink); background: linear-gradient(170deg, var(--paper1), var(--paper2)); border-radius: 6px; padding: 12px 14px;
+    box-shadow: 0 6px 14px #000a, inset 0 0 30px #7a5a2a44; border: 1px solid #7a5a2a;
+  }
+  .event h3 { margin: 0 0 4px; font-size: 16px; display: flex; justify-content: space-between; gap: 8px; }
+  .event h3 span { font-size: 12px; font-weight: 400; color: #6a4a2a; }
   .event p { margin: 0 0 8px; font-size: 14px; }
   .event .opts { display: flex; flex-direction: column; gap: 6px; }
-  .event .opts button { text-align: left; font-weight: 400; padding: 6px 10px; }
+  .event .opts button { text-align: left; font-weight: 400; background: #fff5; box-shadow: none; }
+
+  /* Hand dock */
+  .dock {
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 4; padding: 6px 12px 8px;
+    background: linear-gradient(180deg, #1a0d0ae6, #0d0605f2); border-top: 1px solid var(--line); box-shadow: 0 -8px 24px #000a;
+  }
+  .dock .bar { max-width: 1180px; margin: 0 auto; display: flex; align-items: center; gap: 10px; }
+  .dock .bar .lbl { font-size: 13px; color: var(--gold); letter-spacing: 2px; }
+  .dock .bar .hint { font-size: 12px; color: var(--muted); flex: 1; }
+  .dock .hand { max-width: 1180px; margin: 0 auto; display: flex; gap: 10px; overflow-x: auto; padding: 6px 2px 4px; }
+  .ghostcard { position: fixed; z-index: 50; pointer-events: none; transform: rotate(-4deg) scale(1.05); opacity: .92; }
+
+  #log { background: #0005; border: 1px solid var(--line); border-radius: 10px; padding: 8px 12px; max-height: 240px; overflow: auto; font-size: 14px; }
+  #log div { padding: 3px 0; border-bottom: 1px dashed #ffffff12; }
+  #log .good { color: var(--green); } #log .bad { color: var(--red); } #log .gold { color: var(--gold2); }
+
+  .overlay { position: fixed; inset: 0; background: #000b; display: none; align-items: center; justify-content: center; padding: 16px; z-index: 60; }
+  .overlay.show { display: flex; }
+  .modal {
+    color: var(--ink); background: linear-gradient(170deg, var(--paper1), var(--paper2)); border-radius: 8px; padding: 18px 20px;
+    width: 100%; max-width: 480px; max-height: 88vh; overflow: auto; box-shadow: 0 20px 50px #000; border: 2px solid #7a5a2a;
+  }
+  .modal h3 { margin: 0 0 8px; font-size: 20px; text-align: center; letter-spacing: 3px; }
+  .modal .res { border-top: 1px dashed #7a5a2a; padding: 10px 0; }
+  .modal .res h4 { margin: 0 0 4px; }
+  .dice { display: flex; flex-wrap: wrap; gap: 4px; margin: 6px 0; }
+  .die { width: 18px; height: 18px; border-radius: 4px; background: #5a4a3a; box-shadow: inset 0 -2px 0 #0005; }
+  .die.hit { background: radial-gradient(circle at 40% 35%, #ffe9a0, #c99a2a); }
+  .modal .btns { display: flex; gap: 8px; justify-content: center; margin-top: 10px; flex-wrap: wrap; }
+  .modal .ok { color: #2a6a30; font-weight: 700; } .modal .ng { color: #9a2a20; font-weight: 700; }
+  .help { font-size: 14px; padding-left: 18px; }
   .help li { margin-bottom: 4px; }
+  .shop { display: grid; gap: 8px; }
+  .shop div { display: flex; justify-content: space-between; align-items: center; gap: 8px; border-bottom: 1px dashed #7a5a2a; padding: 6px 0; font-size: 14px; }
+  .empty { color: var(--muted); font-size: 14px; }
 </style>
 </head>
 <body>
 <div class="wrap">
+  <nav class="games"><a href="../">Block Out</a><a class="on" href="./">蘇丹的遊戲</a><a href="../bounce/">Count and Bounce</a></nav>
   <header>
     <h1>蘇丹的遊戲</h1>
-    <div class="nav"><a href="../">Block Out</a> | <a href="../bounce/">Count and Bounce</a> | <a href="#" id="lnkHelp">玩法說明</a> | <a href="#" id="lnkRestart">重新開始</a></div>
+    <div class="hud">
+      <div class="chip">第<b id="sDay">1</b> / 56 天</div>
+      <div class="chip">金幣<b id="sGold">0</b></div>
+      <div class="chip">每日俸祿<b id="sWage">0</b></div>
+      <div class="chip">赦免令<b id="sPardon">0</b></div>
+      <button id="btnEnd">結束這一天</button>
+    </div>
   </header>
-
-  <div class="stats">
-    <div class="stat">第<b id="sDay">1</b> / 56 天</div>
-    <div class="stat">第<b id="sWeek">1</b> 週</div>
-    <div class="stat">金幣<b id="sGold">0</b></div>
-    <div class="stat">每日俸祿<b id="sWage">0</b></div>
-    <div class="stat">已完成旨意<b id="sDone">0</b></div>
-    <div class="stat">赦免令<b id="sPardon">0</b></div>
-  </div>
+  <div class="links"><a href="#" id="lnkHelp">玩法說明</a><a href="#" id="lnkShop">市集</a><a href="#" id="lnkRestart">重新開始</a></div>
 
   <h2>蘇丹的旨意</h2>
-  <div class="row" id="sultan"></div>
+  <div class="rowscroll" id="orders"></div>
 
-  <h2>支線事件</h2>
-  <div class="grid events" id="events"></div>
+  <h2>城中事件</h2>
+  <div class="events" id="events"></div>
 
-  <h2>儀式（選擇一項並派出人手）</h2>
-  <div class="grid" id="rites"></div>
-
-  <div class="endday">
-    <button id="btnEnd">結束這一天</button>
-  </div>
-
-  <h2>你的門客</h2>
-  <div class="grid" id="people"></div>
+  <h2>儀式</h2>
+  <div class="rites" id="rites"></div>
 
   <h2>城中人物</h2>
-  <div class="grid" id="npcs"></div>
+  <div class="rowscroll" id="npcs"></div>
 
   <h2>紀事</h2>
   <div id="log"></div>
 </div>
 
-<div class="overlay" id="ritebox"><div class="modal" id="ritemodal"></div></div>
-
-<div class="overlay" id="helpbox">
-  <div class="modal">
-    <h3>玩法說明</h3>
-    <ul class="help">
-      <li>每週一，蘇丹會賜你一張旨意卡：縱慾、奢靡、征服、殺戮，等級為石、銅、銀、金。</li>
-      <li>旨意必須在 7 天內完成，否則你將被處決。撐過 8 週即獲勝。</li>
-      <li>完成方式：縱慾靠「夜宴」、奢靡靠「揮霍」、征服靠「招攬」城中人物、殺戮靠「暗殺」。完成時的等級需大於等於旨意等級。</li>
-      <li>儀式以擲骰判定：參與者對應屬性的總和就是骰子數，每顆骰子有一半機率成功，成功數達標即成功。</li>
-      <li>每位門客每天只能參與一次儀式。門客每天要支付俸祿（銅 1、銀 2、金 3 金幣），付不出來就會離開。</li>
-      <li>在酒館結識人物，靠經商賺錢，到市集購買裝備提升屬性。</li>
-      <li>城裡會隨機發生支線事件，有些會串成連續的故事：維齊爾的陰謀、公主的出逃、地下反抗軍、星盤之謎、沙漠商隊等。</li>
-      <li>赦免令可以讓你逃過一次旨意逾期的處決。</li>
-      <li>結局不只一種：倖存、處決，還有藏在支線裡的其他結局。</li>
-    </ul>
-    <div class="btns"><button id="btnHelpClose">開始</button></div>
-  </div>
+<div class="dock">
+  <div class="bar"><span class="lbl">你的牌</span><span class="hint" id="hint">拖曳卡牌放進儀式的卡槽，或先點卡牌再點卡槽。</span></div>
+  <div class="hand" id="hand"></div>
 </div>
+
+<div class="overlay" id="box"><div class="modal" id="modal"></div></div>
 
 <script>
 (() => {
   const RANKS = ['', '石', '銅', '銀', '金'];
-  const ATTRS = { body: '體魄', charm: '魅力', wit: '智慧', stealth: '隱匿' };
+  const ATTRS = { body: '體魄', combat: '戰鬥', charm: '魅力', social: '社交', wit: '智慧', stealth: '隱匿' };
   const TYPES = {
     lust: { name: '縱慾', color: 'var(--lust)', text: '蘇丹要你縱情聲色，讓全城都聽聞你的荒唐。' },
     luxury: { name: '奢靡', color: 'var(--luxury)', text: '蘇丹要你一擲千金，揮霍到令人咋舌。' },
     conquest: { name: '征服', color: 'var(--conquest)', text: '蘇丹要你讓某人臣服於你的腳下。' },
     slaughter: { name: '殺戮', color: 'var(--slaughter)', text: '蘇丹要你取一個人的性命。' },
   };
-  const NAMES = ['阿米爾', '法蒂瑪', '哈桑', '萊拉', '卡西姆', '雅斯敏', '優素福', '札拉', '薩利姆', '努爾', '哈里德', '席琳',
+  const NAMES = ['阿米爾', '法蒂瑪', '哈桑', '萊拉', '卡西姆', '札拉', '薩利姆', '努爾', '哈里德', '席琳',
     '塔里克', '米莉亞', '奧馬爾', '娜迪亞', '拉希德', '薩拉', '易卜拉欣', '阿伊莎', '賈法爾', '露珀', '穆斯塔法', '海雅'];
   const ROLES = {
     1: [['奴隸', 'body'], ['乞丐', 'stealth'], ['挑夫', 'body'], ['賣花女', 'charm']],
-    2: [['商人', 'wit'], ['衛兵', 'body'], ['舞姬', 'charm'], ['竊賊', 'stealth']],
-    3: [['學者', 'wit'], ['將軍', 'body'], ['祭司', 'charm'], ['刺客', 'stealth']],
-    4: [['公主', 'charm'], ['維齊爾', 'wit'], ['王子', 'body'], ['影衛長', 'stealth']],
+    2: [['商人', 'social'], ['衛兵', 'combat'], ['舞姬', 'charm'], ['竊賊', 'stealth']],
+    3: [['學者', 'wit'], ['將軍', 'combat'], ['祭司', 'social'], ['刺客', 'stealth']],
+    4: [['公主', 'charm'], ['維齊爾', 'wit'], ['王子', 'combat'], ['影衛長', 'stealth']],
   };
-  const LUST_COST = [0, 3, 8, 15, 25];
-  const LUXURY_COST = [0, 5, 12, 25, 40];
+  // Traits add dice to matching rites, or change wages.
+  const TRAITS = {
+    美貌: { feast: 2, recruit: 2 }, 嗜血: { kill: 2 }, 精明: { trade: 2 }, 虔誠: { train: 2 },
+    健談: { tavern: 2, recruit: 1 }, 忠誠: { wage: -9 }, 貪婪: { wage: 1, trade: 1 },
+  };
   const WAGE = [0, 0, 1, 2, 3];
   const ITEMS = [
-    { name: '大馬士革彎刀', attr: 'body', price: 10 },
-    { name: '玫瑰香膏', attr: 'charm', price: 10 },
-    { name: '星象古卷', attr: 'wit', price: 10 },
-    { name: '夜行斗篷', attr: 'stealth', price: 10 },
+    { name: '大馬士革彎刀', ch: '刃', desc: '暗殺 +3 骰', bonus: { kill: 3 }, price: 9 },
+    { name: '玫瑰香膏', ch: '香', desc: '夜宴、招攬 +3 骰', bonus: { feast: 3, recruit: 3 }, price: 9 },
+    { name: '星象古卷', ch: '卷', desc: '修練、經商 +3 骰', bonus: { train: 3, trade: 3 }, price: 9 },
+    { name: '陳年葡萄酒', ch: '酒', desc: '酒館、夜宴 +2 骰', bonus: { tavern: 2, feast: 2 }, price: 6 },
+    { name: '夜行斗篷', ch: '影', desc: '暗殺、招攬 +2 骰', bonus: { kill: 2, recruit: 2 }, price: 7 },
   ];
   const LAST_DAY = 56;
+  const TIER_GOLD = { feast: [0, 3, 8, 15, 25], squander: [0, 5, 12, 25, 40] };
+
+  // Rites sit on the table as cards with slots. A rite takes some days; the
+  // cards placed in it are locked until it resolves at the end of a day.
+  const RITES = {
+    trade: { name: '經商', days: 1, attrs: ['wit', 'social'], desc: '在市集上周旋買賣。成功數越多，賺得越多。',
+      slots: [['actor', '人物', 1], ['actor', '人物'], ['item', '物品']], need: () => 1 },
+    tavern: { name: '酒館', days: 1, attrs: ['charm', 'social'], desc: '請客喝酒，結識城中人物。成功越多，越可能遇見大人物。',
+      slots: [['actor', '人物', 1], ['gold', '金幣 2', 1, 2], ['item', '物品']], need: () => 0 },
+    recruit: { name: '招攬', days: 2, attrs: ['charm', 'social'], desc: '說服城中人物成為門客。可完成【征服】旨意。需要成功數：對方等級 x2。',
+      slots: [['npc', '目標', 1], ['actor', '人物', 1], ['actor', '人物'], ['item', '物品']], need: t => (t ? t.rank * 2 : 0) },
+    kill: { name: '暗殺', days: 2, attrs: ['combat', 'stealth'], desc: '取人性命。可完成【殺戮】旨意。需要成功數：對方等級 x2（自己的門客只需 1）。失敗時參與者可能喪命。',
+      slots: [['target', '目標', 1], ['actor', '人物', 1], ['actor', '人物'], ['item', '物品']], need: t => (t ? (t.follower ? 1 : t.rank * 2) : 0) },
+    feast: { name: '夜宴', days: 1, attrs: ['charm', 'social'], tier: 'feast', desc: '舉辦縱情的夜宴。可完成【縱慾】旨意。需要成功數：等級 x2。',
+      slots: [['actor', '人物', 1], ['actor', '人物'], ['gold', '金幣', 1], ['item', '物品']], need: (t, tier) => tier * 2 },
+    squander: { name: '揮霍', days: 1, attrs: [], tier: 'squander', desc: '把金幣撒向街頭、熔成雕像、餵給孔雀。直接完成【奢靡】旨意。',
+      slots: [['gold', '金幣', 1]], need: () => 0 },
+    train: { name: '修練', days: 3, attrs: ['wit'], train: true, desc: '閉門苦修，提升一項屬性 1 點（4 次以上成功提升 2 點）。需要成功數：2。',
+      slots: [['actor', '人物', 1], ['item', '物品']], need: () => 2 },
+  };
 
   const $ = id => document.getElementById(id);
   const rand = n => Math.floor(Math.random() * n);
   const pick = a => a[rand(a.length)];
-  let S, nextId;
+  let S, nextId, selected = null;
 
   function makePerson(rank, follower) {
     const [title, main] = pick(ROLES[rank]);
-    const stats = { body: 0, charm: 0, wit: 0, stealth: 0 };
-    let points = 2 + rank * 3;
+    const stats = { body: 0, combat: 0, charm: 0, social: 0, wit: 0, stealth: 0 };
+    let points = 2 + rank * 4;
     stats[main] += 2;
     points -= 2;
     const keys = Object.keys(stats);
-    while (points-- > 0) stats[Math.random() < 0.35 ? main : pick(keys)]++;
+    while (points-- > 0) stats[Math.random() < 0.3 ? main : pick(keys)]++;
     const used = new Set(S ? S.people.map(p => p.name) : []);
     const name = pick(NAMES.filter(n => !used.has(n))) || pick(NAMES);
-    return { id: nextId++, name, title, rank, stats, follower, busy: false, you: false };
+    const traits = Math.random() < 0.6 ? [pick(Object.keys(TRAITS))] : [];
+    return { id: nextId++, name, title, rank, stats, follower, traits, you: false };
   }
 
   function newGame() {
     nextId = 1;
     S = null;
-    S = { day: 1, gold: 12, people: [], sultan: [], done: 0, log: [], over: false, events: [], queue: [], flags: {}, pardon: 0 };
-    S.people.push({ id: nextId++, name: '你', title: '蘇丹的寵臣', rank: 2, stats: { body: 3, charm: 3, wit: 3, stealth: 2 }, follower: true, busy: false, you: true });
-    S.people.push(makePerson(1, true));
+    S = { day: 1, gold: 12, people: [], items: [], sultan: [], done: 0, log: [], over: false, events: [], queue: [], flags: {}, pardon: 0, rites: {} };
+    S.people.push({ id: nextId++, name: '你', title: '蘇丹的寵臣', rank: 2, follower: true, you: true, traits: ['精明'],
+      stats: { body: 2, combat: 2, charm: 3, social: 3, wit: 3, stealth: 2 } });
+    S.people.push({ id: nextId++, name: '妻子', title: '你的妻子', rank: 2, follower: true, traits: ['忠誠', '美貌'],
+      stats: { body: 1, combat: 0, charm: 4, social: 3, wit: 2, stealth: 1 } });
+    S.people.push({ id: nextId++, name: '老僕', title: '家僕', rank: 1, follower: true, traits: ['忠誠'],
+      stats: { body: 3, combat: 1, charm: 0, social: 1, wit: 1, stealth: 2 } });
     S.people.push(makePerson(1, false));
     S.people.push(makePerson(2, false));
+    for (const k of Object.keys(RITES)) S.rites[k] = emptyRite(k);
     log('蘇丹在宮殿深處微笑：「我們來玩一個遊戲吧。」', 'gold');
     startDay();
   }
 
+  function emptyRite(k) {
+    return { slots: RITES[k].slots.map(() => null), running: false, daysLeft: 0, tier: 1, attr: 'wit' };
+  }
+
   function log(text, cls = '') {
     S.log.unshift({ day: S.day, text, cls });
-    S.log = S.log.slice(0, 120);
+    S.log = S.log.slice(0, 150);
   }
 
   function sultanRank(week) {
     const table = [[1], [1, 2], [2], [2, 3], [3], [3, 4], [3, 4, 4], [4]];
     return pick(table[Math.min(week, 8) - 1]);
   }
+
+  // ---- Card locations ----
+  const byId = id => S.people.find(p => p.id === id) || S.items.find(i => i.id === id);
+  function placedIn(id) {
+    for (const [k, r] of Object.entries(S.rites)) if (r.slots.includes(id)) return k;
+    return null;
+  }
+  const isLocked = id => { const k = placedIn(id); return !!(k && S.rites[k].running); };
+  const idle = () => S.people.filter(p => p.follower && !placedIn(p.id));
+  const label = p => `${p.name}（${RANKS[p.rank]}・${p.title}）`;
+  const wageOf = p => (p.you ? 0 : Math.max(0, WAGE[p.rank] + p.traits.reduce((s, t) => s + (TRAITS[t].wage || 0), 0)));
 
   function startDay() {
     if ((S.day - 1) % 7 === 0) {
@@ -237,7 +342,6 @@
       S.sultan.push(card);
       log(`第 ${week} 週。蘇丹賜下旨意：【${RANKS[card.rank]}・${TYPES[type].name}】。${TYPES[type].text}`, 'gold');
     }
-    S.people.forEach(p => (p.busy = false));
     spawnEvents();
     save();
     render();
@@ -245,6 +349,14 @@
 
   function endDay() {
     if (S.over) return;
+    selected = null;
+    const results = [];
+    for (const [k, r] of Object.entries(S.rites)) {
+      if (!r.running) continue;
+      r.daysLeft--;
+      if (r.daysLeft <= 0) results.push(resolveRite(k));
+      if (S.over) return;
+    }
     for (const failed of S.sultan.filter(c => !c.done && c.deadline <= S.day)) {
       if (S.pardon > 0) {
         S.pardon--;
@@ -252,44 +364,159 @@
         log(`【${RANKS[failed.rank]}・${TYPES[failed.type].name}】的期限已到。你呈上赦免令，蘇丹撇撇嘴放過了你。`, 'gold');
         continue;
       }
-      return ending(false, '處決', `【${RANKS[failed.rank]}・${TYPES[failed.type].name}】的期限已到。侍衛把你拖到廣場，蘇丹打了個呵欠。`);
+      return ending(false, '處決', `【${RANKS[failed.rank]}・${TYPES[failed.type].name}】的期限已到。侍衛把你拖到廣場，蘇丹打了個呵欠。`, results);
     }
-    // Wages
     for (const p of S.people.filter(p => p.follower && !p.you)) {
-      const wage = WAGE[p.rank];
+      const wage = wageOf(p);
       if (!wage) continue;
       if (S.gold >= wage) S.gold -= wage;
       else {
         p.follower = false;
-        log(`付不出俸祿，${p.name}（${p.title}）離你而去。`, 'bad');
+        removeFromRites(p.id);
+        log(`付不出俸祿，${label(p)}離你而去。`, 'bad');
       }
     }
-    if (S.day >= LAST_DAY) return ending(true, '倖存', '八週過去，蘇丹厭倦了這個遊戲。你活了下來——至少現在是。');
+    if (S.day >= LAST_DAY) return ending(true, '倖存', '八週過去，蘇丹厭倦了這個遊戲。你活了下來——至少現在是。', results);
     S.day++;
-    // Townsfolk drift in and out.
-    const npcs = S.people.filter(p => !p.follower && !p.quest);
-    if (npcs.length > 3 && Math.random() < 0.3) {
-      const gone = pick(npcs);
+    const drifters = S.people.filter(p => !p.follower && !p.quest && !placedIn(p.id));
+    if (drifters.length > 3 && Math.random() < 0.3) {
+      const gone = pick(drifters);
       S.people = S.people.filter(p => p !== gone);
-      log(`${gone.name}（${gone.title}）離開了城市。`);
+      log(`${label(gone)}離開了城市。`);
     }
     startDay();
+    if (results.length) showResults(results);
   }
 
-  function ending(win, title, text) {
-    S.over = true;
-    log(`結局【${title}】${text}`, win ? 'good' : 'bad');
-    try {
-      const seen = JSON.parse(localStorage.getItem('sultan.endings') || '[]');
-      if (!seen.includes(title)) localStorage.setItem('sultan.endings', JSON.stringify(seen.concat(title)));
-    } catch (e) {}
+  function removeFromRites(id) {
+    for (const r of Object.values(S.rites)) r.slots = r.slots.map(s => (s === id ? null : s));
+  }
+
+  // ---- Dice ----
+  function chance(n, k) {
+    if (k <= 0) return 1;
+    if (n < k) return 0;
+    let total = 0, c = 1;
+    for (let i = 0; i <= n; i++) {
+      if (i >= k) total += c;
+      c = (c * (n - i)) / (i + 1);
+    }
+    return total / Math.pow(2, n);
+  }
+  const rollDice = n => Array.from({ length: n }, () => Math.random() < 0.5);
+  const dice = (ps, attr) => ps.reduce((s, p) => s + p.stats[attr], 0);
+
+  function riteParts(k) {
+    const def = RITES[k], r = S.rites[k];
+    const parts = { actors: [], target: null, item: null, gold: false };
+    def.slots.forEach(([type], i) => {
+      const id = r.slots[i];
+      if (id == null) return;
+      if (type === 'actor') parts.actors.push(byId(id));
+      else if (type === 'npc' || type === 'target') parts.target = byId(id);
+      else if (type === 'item') parts.item = byId(id);
+      else if (type === 'gold') parts.gold = true;
+    });
+    return parts;
+  }
+  function goldNeed(k) {
+    const def = RITES[k];
+    if (def.tier) return TIER_GOLD[def.tier][S.rites[k].tier];
+    const g = def.slots.find(s => s[0] === 'gold');
+    return g ? g[3] : 0;
+  }
+  function riteDice(k) {
+    const def = RITES[k], { actors, item } = riteParts(k);
+    const attrs = def.attrs;
+    let n = actors.reduce((s, p) => s + attrs.reduce((a, at) => a + p.stats[at], 0) + p.traits.reduce((b, t) => b + (TRAITS[t][k] || 0), 0), 0);
+    if (item) n += item.bonus[k] || 0;
+    return n;
+  }
+  const riteNeed = k => RITES[k].need(riteParts(k).target, S.rites[k].tier);
+  function riteReady(k) {
+    const def = RITES[k], r = S.rites[k];
+    return def.slots.every(([, , req], i) => !req || r.slots[i] != null);
+  }
+
+  function startRite(k) {
+    const r = S.rites[k];
+    if (r.running || !riteReady(k)) return;
+    const need = goldNeed(k);
+    if (S.gold < need) return;
+    S.gold -= need;
+    r.goldPaid = need;
+    r.running = true;
+    r.daysLeft = RITES[k].days;
+    const { actors, target } = riteParts(k);
+    log(`【${RITES[k].name}】開始。${actors.map(p => p.name).join('、')}${target ? `，目標：${target.name}` : ''}。需要 ${RITES[k].days} 天。`);
     save();
     render();
-    $('ritemodal').innerHTML = `<div class="end"><h3>結局：${title}</h3><p>${text}</p>
-      <p>你完成了 ${S.done} 道旨意，撐到第 ${S.day} 天。</p><div class="btns" style="justify-content:center">
-      <button id="btnAgain">再玩一次</button></div></div>`;
-    $('ritebox').classList.add('show');
-    $('btnAgain').onclick = () => { $('ritebox').classList.remove('show'); newGame(); };
+  }
+
+  function resolveRite(k) {
+    const def = RITES[k], r = S.rites[k];
+    const { actors, target, item } = riteParts(k);
+    const n = riteDice(k), need = riteNeed(k);
+    const roll = def.attrs.length ? rollDice(n) : [];
+    const s = roll.filter(Boolean).length;
+    const ok = s >= need;
+    const res = { name: def.name, roll, need, ok, text: '' };
+    const say = (t, cls) => { res.text += t; log(`【${def.name}】${t}`, cls); };
+    if (item) S.items = S.items.filter(i => i !== item);
+
+    if (k === 'trade') {
+      const gain = 4 + s * 3;
+      S.gold += gain;
+      say(`${actors.map(p => p.name).join('、')}經商歸來，帶回 ${gain} 金幣。`, 'good');
+      res.ok = true;
+    } else if (k === 'tavern') {
+      const week = Math.ceil(S.day / 7);
+      const rank = Math.max(1, Math.min(4, 1 + Math.floor((s + rand(3) + week / 2) / 3)));
+      const np = makePerson(rank, false);
+      S.people.push(np);
+      say(`${actors[0].name}在酒館結識了${label(np)}。`, 'good');
+      res.ok = true;
+    } else if (k === 'recruit') {
+      if (ok && S.people.includes(target)) {
+        target.follower = true;
+        say(`${label(target)}跪在你面前，宣誓效忠。`, 'good');
+        fulfil('conquest', target.rank);
+      } else say(`${target.name}對你的提議嗤之以鼻。`, 'bad');
+    } else if (k === 'kill') {
+      if (ok && S.people.includes(target)) {
+        S.people = S.people.filter(p => p !== target);
+        removeFromRites(target.id);
+        say(`${label(target)}倒在血泊中。${target.follower ? '曾經的追隨者，再也不會說話了。' : ''}`, 'bad');
+        fulfil('slaughter', target.rank);
+        onKilled(target);
+      } else {
+        say(`暗殺${target.name}失敗了。`, 'bad');
+        const victims = actors.filter(p => !p.you);
+        if (victims.length && Math.random() < 0.4) {
+          const v = pick(victims);
+          S.people = S.people.filter(p => p !== v);
+          removeFromRites(v.id);
+          say(`${label(v)}在混戰中喪命。`, 'bad');
+        }
+      }
+    } else if (k === 'feast') {
+      if (ok) { say(`一場${RANKS[r.tier]}級的夜宴徹夜未歇，滿城皆知。`, 'good'); fulfil('lust', r.tier); }
+      else say('夜宴冷冷清清，賓客早早散去。金幣白白花掉了。', 'bad');
+    } else if (k === 'squander') {
+      say(`你揮霍了 ${r.goldPaid} 金幣。百姓目瞪口呆。`, 'gold');
+      fulfil('luxury', r.tier);
+      res.ok = true;
+    } else if (k === 'train') {
+      const p = actors[0];
+      if (ok) {
+        const up = s >= 4 ? 2 : 1;
+        p.stats[r.attr] += up;
+        say(`${p.name}的${ATTRS[r.attr]}提升了 ${up} 點。`, 'good');
+      } else say(`${p.name}苦修三日，毫無所得。`);
+    }
+    const keep = { tier: r.tier, attr: r.attr };
+    S.rites[k] = Object.assign(emptyRite(k), keep);
+    return res;
   }
 
   function fulfil(type, rank) {
@@ -301,38 +528,22 @@
     S.gold += card.rank * 3;
   }
 
-  // Probability that n fair dice (each 50%) give at least k successes.
-  function chance(n, k) {
-    if (k <= 0) return 1;
-    if (n < k) return 0;
-    let total = 0, c = 1;
-    for (let i = 0; i <= n; i++) {
-      if (i >= k) total += c;
-      c = (c * (n - i)) / (i + 1);
-    }
-    return total / Math.pow(2, n);
-  }
-  function roll(n) { let s = 0; for (let i = 0; i < n; i++) if (Math.random() < 0.5) s++; return s; }
-  const dice = (ps, attr) => ps.reduce((s, p) => s + p.stats[attr], 0);
-  const label = p => `${p.name}（${RANKS[p.rank]}・${p.title}）`;
-
-  // ---- Side stories: random events and multi-step quest chains ----
-  // A choice with a check is rolled by your three best idle followers in that
-  // attribute; they count as having acted today.
-  const bestGroup = attr => S.people.filter(p => p.follower && !p.busy).sort((a, b) => b.stats[attr] - a.stats[attr]).slice(0, 3);
+  // ---- Side stories ----
+  // A choice with a check is rolled by your three best idle followers.
+  const bestGroup = attr => idle().sort((a, b) => b.stats[attr] - a.stats[attr]).slice(0, 3);
   function test(attr, need) {
     const ps = bestGroup(attr);
-    const s = roll(dice(ps, attr));
-    ps.forEach(p => (p.busy = true));
+    const s = rollDice(dice(ps, attr)).filter(Boolean).length;
     log(`${ps.map(p => p.name).join('、') || '無人'}進行${ATTRS[attr]}判定，擲出 ${s} 次成功（需要 ${need}）。`);
     return s >= need;
   }
   const week = () => Math.ceil(S.day / 7);
-  const others = () => S.people.filter(p => p.follower && !p.you);
+  const others = () => S.people.filter(p => p.follower && !p.you && !isLocked(p.id));
   function loseFollower(reason) {
     const v = pick(others());
     if (!v) return log('幸好你身邊已經沒有人可以失去了。');
     S.people = S.people.filter(p => p !== v);
+    removeFromRites(v.id);
     log(`${label(v)}${reason}`, 'bad');
   }
   function addFollower(rank, title, name) {
@@ -388,13 +599,13 @@
       options: () => [
         { label: '接下這份差事', run() {
           const g = makePerson(3, false);
-          g.title = '將軍'; g.stats.body += 2; g.quest = 'vizier';
+          g.title = '將軍'; g.stats.combat += 2; g.quest = 'vizier';
           S.people.push(g);
           S.flags.vizier = g.id;
           schedule('vizierDue', 7);
-          log(`目標是${label(g)}。期限七天。可以用「暗殺」完成，也算作一次殺戮。`, 'gold');
+          log(`目標是${label(g)}。期限七天。把他放進「暗殺」儀式的目標槽，也算作一次殺戮。`, 'gold');
         } },
-        { label: '向蘇丹告發', check: ['charm', 3], run(ok) {
+        { label: '向蘇丹告發', check: ['social', 3], run(ok) {
           if (ok) { log('蘇丹聽完你的話，笑著把維齊爾的頭掛上了城門。', 'good'); pardon(); }
           else { log('蘇丹不信你的話。當晚，維齊爾的人找上門來。', 'bad'); loseFollower('死於維齊爾的報復。'); }
         } },
@@ -455,10 +666,10 @@
       text: () => `反抗軍需要你的幫助。（起義準備度：${S.flags.rebels - 1} / 3）`,
       options: () => [
         { label: '資助武器', cost: 8, run() { rebelProgress(); } },
-        { label: '襲擊糧倉', check: ['body', 4], run(ok) {
+        { label: '襲擊糧倉', check: ['combat', 4], run(ok) {
           if (ok) rebelProgress(); else { loseFollower('在襲擊中被捕，死在地牢裡。'); schedule('rebelTask', 3); }
         } },
-        { label: '在市集煽動民心', check: ['charm', 4], run(ok) {
+        { label: '在市集煽動民心', check: ['social', 4], run(ok) {
           if (ok) rebelProgress(); else { log('民眾冷眼旁觀，你差點被衛兵盯上。'); schedule('rebelTask', 3); }
         } },
         { label: '這次先不參與', run() { schedule('rebelTask', 3); } },
@@ -468,7 +679,7 @@
       title: '起義之夜', ttl: 3, cond: () => S.flags.rebels >= 4,
       text: '萬事俱備。反抗軍首領把彎刀交到你手上：「今夜，由你帶頭衝進宮殿。」',
       options: () => [
-        { label: '帶頭起義', check: ['body', 5], run(ok) {
+        { label: '帶頭起義', check: ['combat', 5], run(ok) {
           if (ok) ending(true, '新的蘇丹', '宮殿陷落，蘇丹倒在他的寶座上。眾人跪下，向新的蘇丹——你——高呼萬歲。');
           else ending(false, '叛亂失敗', '起義被鎮壓。蘇丹饒有興致地看著你：「這可不在遊戲規則裡。」');
         } },
@@ -507,7 +718,7 @@
       title: '夜襲', minWeek: 3, ttl: 1,
       text: '深夜，屋頂上傳來腳步聲。有人想要你的命。',
       options: () => [
-        { label: '奮起抵抗', check: ['body', 3], run(ok) {
+        { label: '奮起抵抗', check: ['combat', 3], run(ok) {
           if (ok) log('刺客被擊退，留下一灘血跡。', 'good'); else loseFollower('為了保護你，倒在刺客的刀下。');
         } },
         { label: '花錢消災', cost: 10, run() { log('你把錢袋扔出窗外，腳步聲遠去了。'); } },
@@ -582,6 +793,13 @@
     else schedule('rebelTask', 3);
   }
 
+  function rebelProgress() {
+    S.flags.rebels++;
+    log(`反抗軍的力量壯大了。（起義準備度：${S.flags.rebels - 1} / 3）`, 'good');
+    if (S.flags.rebels >= 4) { schedule('rebelUprising', 2); log('首領傳話：起義的時機快到了。', 'gold'); }
+    else schedule('rebelTask', 3);
+  }
+
   function addEvent(key) {
     const ev = EVENTS[key];
     S.events.push({ id: nextId++, key, expires: S.day + (ev.ttl || 3) - 1 });
@@ -624,201 +842,177 @@
     }
   }
 
-  // Each rite: who can join, what extra choice it needs, the check, and the outcome.
-  const RITES = [
-    {
-      key: 'trade', name: '經商', attr: 'wit', max: 2,
-      desc: '在市集上周旋買賣。成功數越多，賺得越多。',
-      need: () => 1,
-      run(ps, _, ok, s) {
-        const gain = ok ? 3 + s * 2 : 1;
-        S.gold += gain;
-        log(`${ps.map(p => p.name).join('、')}經商歸來，帶回 ${gain} 金幣。`, ok ? 'good' : '');
-      },
-    },
-    {
-      key: 'tavern', name: '酒館', attr: 'charm', max: 1,
-      desc: '在酒館裡結識城中人物。魅力越高，越可能遇見大人物。',
-      need: () => 0,
-      run(ps, _, ok, s) {
-        const week = Math.ceil(S.day / 7);
-        const rank = Math.max(1, Math.min(4, 1 + Math.floor((s + rand(3) + week / 2) / 3)));
-        const np = makePerson(rank, false);
-        S.people.push(np);
-        log(`${ps[0].name}在酒館結識了${label(np)}。`, 'good');
-      },
-    },
-    {
-      key: 'recruit', name: '招攬', attr: 'charm', max: 3, target: 'npc',
-      desc: '說服城中人物成為你的門客。成功可完成【征服】旨意。需要成功數：對方等級 + 1。',
-      need: t => t.rank + 1,
-      run(ps, t, ok) {
-        if (ok) {
-          t.follower = true;
-          t.busy = true;
-          log(`${label(t)}跪在你面前，宣誓效忠。`, 'good');
-          fulfil('conquest', t.rank);
-        } else log(`${t.name}對你的提議嗤之以鼻。`, 'bad');
-      },
-    },
-    {
-      key: 'kill', name: '暗殺', attr: 'body', max: 3, target: 'any',
-      desc: '取人性命。成功可完成【殺戮】旨意。需要成功數：對方等級 + 1（自己的門客只需 1）。失敗時參與者可能喪命。',
-      need: t => (t.follower ? 1 : t.rank + 1),
-      run(ps, t, ok) {
-        if (ok) {
-          S.people = S.people.filter(p => p !== t);
-          log(`${label(t)}倒在血泊中。${t.follower ? '曾經的追隨者，再也不會說話了。' : ''}`, 'bad');
-          fulfil('slaughter', t.rank);
-          onKilled(t);
-        } else {
-          log(`暗殺${t.name}失敗了。`, 'bad');
-          const victims = ps.filter(p => !p.you);
-          if (victims.length && Math.random() < 0.4) {
-            const v = pick(victims);
-            S.people = S.people.filter(p => p !== v);
-            log(`${label(v)}在混戰中喪命。`, 'bad');
-          }
-        }
-      },
-    },
-    {
-      key: 'feast', name: '夜宴', attr: 'charm', max: 3, tier: LUST_COST,
-      desc: '舉辦縱情的夜宴。成功可完成【縱慾】旨意。花費依等級而定，需要成功數：等級。',
-      need: (_, tier) => tier,
-      run(ps, _, ok, s, tier) {
-        S.gold -= LUST_COST[tier];
-        if (ok) {
-          log(`一場${RANKS[tier]}級的夜宴徹夜未歇，酒池肉林，滿城皆知。`, 'good');
-          fulfil('lust', tier);
-        } else log('夜宴冷冷清清，賓客早早散去。金幣白白花掉了。', 'bad');
-      },
-    },
-    {
-      key: 'squander', name: '揮霍', attr: null, max: 0, tier: LUXURY_COST,
-      desc: '把金幣撒向街頭、熔成雕像、餵給孔雀。直接完成【奢靡】旨意，無需判定。',
-      need: () => 0,
-      run(_, __, ___, ____, tier) {
-        S.gold -= LUXURY_COST[tier];
-        log(`你揮霍了 ${LUXURY_COST[tier]} 金幣。百姓目瞪口呆。`, 'gold');
-        fulfil('luxury', tier);
-      },
-    },
-    {
-      key: 'train', name: '修練', attr: 'wit', max: 1, train: true,
-      desc: '閉門苦修，提升一項屬性 1 點。需要成功數：2。',
-      need: () => 2,
-      run(ps, _, ok, s, __, attr) {
-        if (ok) {
-          ps[0].stats[attr]++;
-          log(`${ps[0].name}的${ATTRS[attr]}提升了。`, 'good');
-        } else log(`${ps[0].name}苦修一日，毫無所得。`);
-      },
-    },
-    {
-      key: 'market', name: '市集', attr: null, max: 0, market: true,
-      desc: '購買裝備贈予一位門客，永久提升屬性 2 點。不佔用行動。',
-      need: () => 0,
-      run(_, t, __, ___, ____, _____, item) {
-        S.gold -= item.price;
-        t.stats[item.attr] += 2;
-        log(`你把${item.name}贈給${t.name}，${ATTRS[item.attr]} +2。`, 'good');
-      },
-    },
-  ];
+  function ending(win, title, text, results) {
+    S.over = true;
+    log(`結局【${title}】${text}`, win ? 'good' : 'bad');
+    try {
+      const seen = JSON.parse(localStorage.getItem('sultan.endings') || '[]');
+      if (!seen.includes(title)) localStorage.setItem('sultan.endings', JSON.stringify(seen.concat(title)));
+    } catch (e) {}
+    save();
+    render();
+    let seen = [];
+    try { seen = JSON.parse(localStorage.getItem('sultan.endings') || '[]'); } catch (e) {}
+    showModal(`<h3>結局：${title}</h3><p>${text}</p><p>你完成了 ${S.done} 道旨意，撐到第 ${S.day} 天。</p>
+      <p style="font-size:13px">已解鎖的結局：${seen.join('、') || title}</p>
+      <div class="btns"><button id="btnAgain">再玩一次</button></div>`);
+    $('btnAgain').onclick = () => { hideModal(); newGame(); };
+  }
 
-  function openRite(r) {
-    if (S.over) return;
-    const free = S.people.filter(p => p.follower && !p.busy);
-    const followers = S.people.filter(p => p.follower);
-    const targets = r.target === 'npc' ? S.people.filter(p => !p.follower)
-      : r.target === 'any' ? S.people.filter(p => !p.you) : [];
-    const m = $('ritemodal');
-    let html = `<h3>${r.name}</h3><div class="desc">${r.desc}</div>`;
-    if (r.max) {
-      html += `<div class="field">派出人手（最多 ${r.max} 人，判定屬性：${ATTRS[r.attr]}）</div>`;
-      html += free.length ? free.map(p => `<label class="opt"><input type="checkbox" value="${p.id}" class="pp">
-        ${label(p)}　${ATTRS[r.attr]} ${p.stats[r.attr]}</label>`).join('') : '<div class="desc">今天沒有空閒的門客。</div>';
-    }
-    if (r.target) {
-      html += '<div class="field">目標</div><select id="rt">' + (targets.length
-        ? targets.map(p => `<option value="${p.id}">${label(p)}${p.follower ? '　[門客]' : ''}　體${p.stats.body}</option>`).join('')
-        : '<option value="">（沒有可選的目標，先去酒館結識人物）</option>') + '</select>';
-    }
-    if (r.tier) {
-      html += '<div class="field">等級與花費</div><select id="rtier">' +
-        [1, 2, 3, 4].map(t => `<option value="${t}">${RANKS[t]}級，花費 ${r.tier[t]} 金幣</option>`).join('') + '</select>';
-    }
-    if (r.train) {
-      html += '<div class="field">要提升的屬性</div><select id="rattr">' +
-        Object.entries(ATTRS).map(([k, v]) => `<option value="${k}">${v}</option>`).join('') + '</select>';
-    }
-    if (r.market) {
-      html += '<div class="field">商品</div><select id="ritem">' +
-        ITEMS.map((it, i) => `<option value="${i}">${it.name}（${ATTRS[it.attr]} +2）${it.price} 金幣</option>`).join('') + '</select>';
-      html += '<div class="field">贈予</div><select id="rt">' + followers.map(p => `<option value="${p.id}">${label(p)}</option>`).join('') + '</select>';
-    }
-    html += '<div class="chance" id="rchance"></div><div class="btns"><button class="ghost" id="rcancel">取消</button><button id="rgo">執行</button></div>';
-    m.innerHTML = html;
-    $('ritebox').classList.add('show');
+  // ---- Placing cards ----
+  function accepts(type, card) {
+    if (!card) return false;
+    if (type === 'actor') return !!card.stats && card.follower;
+    if (type === 'npc') return !!card.stats && !card.follower;
+    if (type === 'target') return !!card.stats && !card.you;
+    if (type === 'item') return card.kind === 'item';
+    if (type === 'gold') return card.kind === 'gold';
+    return false;
+  }
+  const GOLD_CARD = { id: -1, kind: 'gold' };
+  const cardById = id => (id === -1 ? GOLD_CARD : byId(id));
 
-    const read = () => {
-      const ps = [...m.querySelectorAll('.pp:checked')].map(i => S.people.find(p => p.id === +i.value));
-      const tEl = $('rt');
-      const t = tEl && tEl.value ? S.people.find(p => p.id === +tEl.value) : null;
-      const tier = $('rtier') ? +$('rtier').value : 0;
-      const item = $('ritem') ? ITEMS[+$('ritem').value] : null;
-      const attr = $('rattr') ? $('rattr').value : null;
-      return { ps, t, tier, item, attr };
-    };
-    const refresh = () => {
-      const tEl = $('rt');
-      m.querySelectorAll('.pp').forEach(i => {
-        if (r.target && tEl && i.value === tEl.value) i.checked = false;
-      });
-      const { ps, t, tier, item } = read();
-      m.querySelectorAll('.pp').forEach(i => {
-        i.disabled = (r.target && tEl && i.value === tEl.value) || (!i.checked && ps.length >= r.max);
-      });
-      let msg = '', ok = true;
-      if (r.max && !ps.length) { msg = '請至少派出一人。'; ok = false; }
-      else if (r.target && !t) { msg = '請選擇目標。'; ok = false; }
-      else if (r.tier && S.gold < r.tier[tier]) { msg = `金幣不足（需要 ${r.tier[tier]}）。`; ok = false; }
-      else if (r.market && (!t || S.gold < item.price)) { msg = '金幣不足。'; ok = false; }
-      else if (r.attr) {
-        const n = dice(ps, r.attr), k = r.need(t, tier);
-        msg = `骰子 <b>${n}</b> 顆，需要成功 <b>${k}</b> 次，成功率 <b>${Math.round(chance(n, k) * 100)}%</b>`;
-      } else msg = '無需判定。';
-      $('rchance').innerHTML = msg;
-      $('rgo').disabled = !ok;
-    };
-    m.querySelectorAll('input,select').forEach(e => e.addEventListener('change', refresh));
-    refresh();
-    $('rcancel').onclick = () => $('ritebox').classList.remove('show');
-    $('rgo').onclick = () => {
-      const { ps, t, tier, item, attr } = read();
-      let ok = true, s = 0;
-      if (r.attr) {
-        s = roll(dice(ps, r.attr));
-        ok = s >= r.need(t, tier);
-        log(`【${r.name}】擲出 ${s} 次成功${r.need(t, tier) ? `（需要 ${r.need(t, tier)}）` : ''}。`);
-      }
-      ps.forEach(p => (p.busy = true));
-      r.run(ps, t, ok, s, tier, attr, item);
-      $('ritebox').classList.remove('show');
-      save();
+  function place(k, i, id) {
+    const r = S.rites[k];
+    if (r.running || S.over) return false;
+    const type = RITES[k].slots[i][0];
+    const card = cardById(id);
+    if (!accepts(type, card)) return flash(`這個卡槽放不了這張牌。`);
+    if (id !== -1 && isLocked(id)) return flash('這張牌正在其他儀式中。');
+    if (id !== -1) removeFromRites(id);
+    if (type === 'gold' && S.gold < goldNeed(k)) return flash(`金幣不足，需要 ${goldNeed(k)}。`);
+    r.slots[i] = id;
+    selected = null;
+    save();
+    render();
+    return true;
+  }
+  function flash(msg) {
+    $('hint').textContent = msg;
+    $('hint').style.color = 'var(--red)';
+    clearTimeout(flash.t);
+    flash.t = setTimeout(() => { $('hint').textContent = '拖曳卡牌放進儀式的卡槽，或先點卡牌再點卡槽。'; $('hint').style.color = ''; }, 1800);
+    return false;
+  }
+
+  // Pointer drag with a floating copy of the card; a tap selects instead.
+  let drag = null;
+  document.addEventListener('pointerdown', ev => {
+    const el = ev.target.closest('.gcard[data-id]');
+    if (!el || el.classList.contains('locked') || S.over) return;
+    drag = { id: +el.dataset.id, el, x: ev.clientX, y: ev.clientY, moved: false, ghost: null };
+  });
+  document.addEventListener('pointermove', ev => {
+    if (!drag) return;
+    if (!drag.moved && Math.hypot(ev.clientX - drag.x, ev.clientY - drag.y) < 8) return;
+    if (!drag.moved) {
+      drag.moved = true;
+      drag.ghost = drag.el.cloneNode(true);
+      drag.ghost.classList.add('ghostcard');
+      document.body.appendChild(drag.ghost);
+    }
+    ev.preventDefault();
+    drag.ghost.style.left = ev.clientX - 56 + 'px';
+    drag.ghost.style.top = ev.clientY - 84 + 'px';
+    document.querySelectorAll('.slot.hover').forEach(s => s.classList.remove('hover'));
+    const slot = document.elementFromPoint(ev.clientX, ev.clientY)?.closest('.slot');
+    if (slot) slot.classList.add('hover');
+  }, { passive: false });
+  document.addEventListener('pointercancel', () => {
+    if (drag && drag.ghost) drag.ghost.remove();
+    drag = null;
+  });
+  document.addEventListener('pointerup', ev => {
+    if (!drag) return;
+    const d = drag;
+    drag = null;
+    if (d.ghost) d.ghost.remove();
+    document.querySelectorAll('.slot.hover').forEach(s => s.classList.remove('hover'));
+    if (d.moved) {
+      const slot = document.elementFromPoint(ev.clientX, ev.clientY)?.closest('.slot');
+      if (slot) place(slot.dataset.rite, +slot.dataset.i, d.id);
+    } else {
+      selected = selected === d.id ? null : d.id;
       render();
-    };
+    }
+  });
+
+  function clickSlot(k, i) {
+    const r = S.rites[k];
+    if (r.running) return;
+    if (selected != null) return place(k, i, selected);
+    if (r.slots[i] != null) { r.slots[i] = null; save(); render(); }
+  }
+
+  // ---- Rendering ----
+  function cardHTML(c, extra = '') {
+    if (c.kind === 'gold') {
+      return `<div class="gcard coin ${selected === -1 ? 'sel' : ''}" data-id="-1"><div class="portrait">金</div>
+        <div class="big">${S.gold}</div><div class="tt">金幣</div><div class="tags"><i>拖進金幣槽</i></div></div>`;
+    }
+    if (c.kind === 'item') {
+      const where = placedIn(c.id);
+      return `<div class="gcard item rank2 ${isLocked(c.id) ? 'locked' : ''} ${selected === c.id ? 'sel' : ''}" data-id="${c.id}">
+        <div class="portrait">${c.ch}</div><div class="nm">${c.name}</div><div class="desc">${c.desc}</div>
+        <div class="tags"><i>用後消耗</i></div>${where ? `<div class="status">${RITES[where].name}</div>` : ''}</div>`;
+    }
+    const where = placedIn(c.id);
+    const at = Object.entries(ATTRS).map(([k, v]) => `<span>${v}<b>${c.stats[k]}</b></span>`).join('');
+    const tags = c.traits.map(t => `<i>${t}</i>`).join('') + (c.follower && wageOf(c) ? `<i>俸 ${wageOf(c)}</i>` : '');
+    return `<div class="gcard rank${c.rank} ${c.follower ? '' : 'npc'} ${isLocked(c.id) ? 'locked' : ''} ${selected === c.id ? 'sel' : ''} ${extra}" data-id="${c.id}">
+      <span class="rk rk${c.rank}">${RANKS[c.rank]}</span>
+      <div class="portrait">${c.you ? '我' : c.name[0]}</div><div class="nm">${c.name}</div><div class="tt">${c.title}</div>
+      <div class="at">${at}</div><div class="tags">${tags}</div>
+      ${where ? `<div class="status">${S.rites[where].running ? `${RITES[where].name}中・剩 ${S.rites[where].daysLeft} 天` : `已放入${RITES[where].name}`}</div>` : ''}</div>`;
+  }
+
+  function riteHTML(k) {
+    const def = RITES[k], r = S.rites[k];
+    const slots = def.slots.map(([type, lbl, req, amt], i) => {
+      const id = r.slots[i];
+      let inner = `${lbl}${req ? '<br>（必要）' : ''}`, cls = '';
+      if (id != null) {
+        cls = 'filled' + (id === -1 ? ' coin' : '');
+        inner = id === -1 ? `金幣<small>${goldNeed(k)} 枚</small>` : `${cardById(id).name}<small>${cardById(id).title || cardById(id).desc || ''}</small>`;
+      } else if (type === 'gold') inner = `金幣 ${goldNeed(k)}<br>（必要）`;
+      return `<div class="slot ${req ? 'req' : ''} ${cls}" data-rite="${k}" data-i="${i}">${inner}</div>`;
+    }).join('');
+    let ctl = '';
+    if (def.tier) {
+      ctl += `<select data-tier="${k}" ${r.running ? 'disabled' : ''}>${[1, 2, 3, 4].map(t => `<option value="${t}" ${r.tier === t ? 'selected' : ''}>${RANKS[t]}級・${TIER_GOLD[def.tier][t]} 金幣</option>`).join('')}</select>`;
+    }
+    if (def.train) {
+      ctl += `<select data-attr="${k}" ${r.running ? 'disabled' : ''}>${Object.entries(ATTRS).map(([a, v]) => `<option value="${a}" ${r.attr === a ? 'selected' : ''}>提升${v}</option>`).join('')}</select>`;
+    }
+    let odds;
+    if (r.running) odds = `進行中，還剩 <b>${r.daysLeft}</b> 天`;
+    else if (!def.attrs.length) odds = '無需判定';
+    else if (!riteReady(k)) odds = '放滿必要卡槽後顯示成功率';
+    else {
+      const n = riteDice(k), need = riteNeed(k);
+      odds = `骰子 <b>${n}</b>，需 <b>${need}</b> 成功，成功率 <b>${Math.round(chance(n, need) * 100)}%</b>`;
+    }
+    const can = !r.running && riteReady(k) && S.gold >= goldNeed(k) && !S.over;
+    return `<div class="rite ${r.running ? 'running' : ''}">
+      <div class="top"><h3>${def.name}</h3><span class="days">需 ${def.days} 天${def.attrs.length ? `・判定：${def.attrs.map(a => ATTRS[a]).join('＋')}` : ''}</span></div>
+      <p>${def.desc}</p><div class="slots">${slots}</div>
+      <div class="ctl">${ctl}<span class="odds">${odds}</span>${r.running ? '' : `<button data-start="${k}" ${can ? '' : 'disabled'}>開始儀式</button>`}</div></div>`;
   }
 
   function render() {
-    const week = Math.ceil(S.day / 7);
     $('sDay').textContent = S.day;
-    $('sWeek').textContent = week;
     $('sGold').textContent = S.gold;
-    $('sWage').textContent = S.people.filter(p => p.follower).reduce((s, p) => s + WAGE[p.rank], 0);
-    $('sDone').textContent = S.done;
+    $('sWage').textContent = S.people.filter(p => p.follower).reduce((s, p) => s + wageOf(p), 0);
     $('sPardon').textContent = S.pardon;
+    $('btnEnd').disabled = S.over;
+
+    $('orders').innerHTML = S.sultan.slice(-5).map(c => {
+      const left = c.deadline - S.day + 1;
+      return `<div class="order ${c.done ? 'done' : ''} ${!c.done && left <= 2 ? 'urgent' : ''}" style="border-color:var(--r${c.rank})">
+        <div class="seal">${RANKS[c.rank]}・蘇丹之令</div>
+        <div class="type" style="color:${TYPES[c.type].color}">${[...TYPES[c.type].name].map(ch => `<span>${ch}</span>`).join('')}</div>
+        <div class="left">${c.done ? '已完成' : left <= 1 ? '今日為限' : `剩餘 ${left} 天`}</div></div>`;
+    }).join('');
 
     $('events').innerHTML = S.events.length ? S.events.map(e => {
       const ev = EVENTS[e.key];
@@ -832,43 +1026,78 @@
           extra = `（${ATTRS[attr]} 需 ${need}，${Math.round(chance(dice(bestGroup(attr), attr), need) * 100)}%）`;
         }
         const dis = S.over || (o.cost && S.gold < o.cost) ? 'disabled' : '';
-        return `<button class="ghost" data-e="${e.id}" data-o="${i}" ${dis}>${o.label}${extra}</button>`;
+        return `<button data-e="${e.id}" data-o="${i}" ${dis}>${o.label}${extra}</button>`;
       }).join('');
-      return `<div class="card event"><h3>${ev.title}<span class="left">${left <= 1 ? '今天結束前' : `剩 ${left} 天`}</span></h3>
-        <p>${text}</p><div class="opts">${opts}</div></div>`;
-    }).join('') : '<div class="help">今天城裡風平浪靜。</div>';
-    $('events').querySelectorAll('button').forEach(b => (b.onclick = () => chooseEvent(+b.dataset.e, +b.dataset.o)));
+      return `<div class="event"><h3>${ev.title}<span>${left <= 1 ? '今日為限' : `剩 ${left} 天`}</span></h3><p>${text}</p><div class="opts">${opts}</div></div>`;
+    }).join('') : '<div class="empty">今天城裡風平浪靜。</div>';
 
-    $('sultan').innerHTML = S.sultan.slice(-4).map(c => {
-      const left = c.deadline - S.day + 1;
-      return `<div class="card sultan ${c.done ? 'done' : ''} ${!c.done && left <= 2 ? 'urgent' : ''}" style="border-color:${TYPES[c.type].color}">
-        <span class="rank rank${c.rank}">${RANKS[c.rank]}</span>
-        <div class="type" style="color:${TYPES[c.type].color}">${TYPES[c.type].name}</div>
-        <div class="left">${c.done ? '　' : left === 1 ? '今天是最後期限' : `剩餘 ${left} 天`}</div></div>`;
-    }).join('');
-
-    $('rites').innerHTML = RITES.map((r, i) => `<div class="card rite" data-i="${i}"><h3>${r.name}</h3><p>${r.desc}</p></div>`).join('');
-    $('rites').querySelectorAll('.rite').forEach(e => (e.onclick = () => openRite(RITES[+e.dataset.i])));
-
-    const personCard = p => `<div class="card person ${p.follower ? '' : 'npc'} ${p.busy ? 'busy' : ''}">
-      <h3><span>${p.name}</span><span class="rank rank${p.rank}">${RANKS[p.rank]}</span></h3>
-      <div class="title">${p.title}${p.follower && p.busy ? '　（今日已行動）' : ''}${p.follower && WAGE[p.rank] && !p.you ? `　俸祿 ${WAGE[p.rank]}` : ''}</div>
-      <div class="attrs">${Object.entries(ATTRS).map(([k, v]) => `<span>${v}<br>${p.stats[k]}</span>`).join('')}</div></div>`;
-    $('people').innerHTML = S.people.filter(p => p.follower).map(personCard).join('');
+    $('rites').innerHTML = Object.keys(RITES).map(riteHTML).join('');
     const npcs = S.people.filter(p => !p.follower);
-    $('npcs').innerHTML = npcs.length ? npcs.map(personCard).join('') : '<div class="help">城裡沒有你認識的人。去酒館看看吧。</div>';
-
+    $('npcs').innerHTML = npcs.length ? npcs.map(p => cardHTML(p)).join('') : '<div class="empty">城裡沒有你認識的人。去酒館看看吧。</div>';
+    $('hand').innerHTML = [GOLD_CARD, ...S.people.filter(p => p.follower), ...S.items].map(c => cardHTML(c)).join('');
     $('log').innerHTML = S.log.map(l => `<div class="${l.cls}">第 ${l.day} 天｜${l.text}</div>`).join('');
-    $('btnEnd').disabled = S.over;
+
+    document.querySelectorAll('[data-e]').forEach(b => (b.onclick = () => chooseEvent(+b.dataset.e, +b.dataset.o)));
+    document.querySelectorAll('.slot').forEach(s => (s.onclick = () => clickSlot(s.dataset.rite, +s.dataset.i)));
+    document.querySelectorAll('[data-start]').forEach(b => (b.onclick = () => startRite(b.dataset.start)));
+    document.querySelectorAll('[data-tier]').forEach(sel => (sel.onchange = () => {
+      const k = sel.dataset.tier;
+      S.rites[k].tier = +sel.value;
+      S.rites[k].slots = S.rites[k].slots.map((id, i) => (RITES[k].slots[i][0] === 'gold' ? null : id));
+      render();
+    }));
+    document.querySelectorAll('[data-attr]').forEach(sel => (sel.onchange = () => { S.rites[sel.dataset.attr].attr = sel.value; render(); }));
   }
 
-  function save() { try { localStorage.setItem('sultan.save', JSON.stringify({ S, nextId })); } catch (e) {} }
+  function showModal(html) { $('modal').innerHTML = html; $('box').classList.add('show'); }
+  function hideModal() { $('box').classList.remove('show'); }
+
+  function showResults(results) {
+    showModal(`<h3>儀式結果</h3>` + results.map(r => `<div class="res"><h4>${r.name}　<span class="${r.ok ? 'ok' : 'ng'}">${r.ok ? '成功' : '失敗'}</span></h4>
+      ${r.roll.length ? `<div class="dice">${r.roll.map(h => `<span class="die ${h ? 'hit' : ''}"></span>`).join('')}</div>
+      <div style="font-size:13px">擲出 ${r.roll.filter(Boolean).length} 次成功${r.need ? `，需要 ${r.need}` : ''}</div>` : ''}
+      <div>${r.text}</div></div>`).join('') + `<div class="btns"><button id="btnOk">繼續</button></div>`);
+    $('btnOk').onclick = hideModal;
+  }
+
+  function showShop() {
+    if (S.over) return;
+    showModal(`<h3>市集</h3><p style="font-size:14px">物品放進儀式的物品槽可增加骰子，用後消耗。你有 ${S.gold} 金幣。</p><div class="shop">` +
+      ITEMS.map((it, i) => `<div><span><b>${it.name}</b>　${it.desc}</span><button data-buy="${i}" ${S.gold < it.price ? 'disabled' : ''}>${it.price} 金幣</button></div>`).join('') +
+      `</div><div class="btns"><button class="ghost" id="btnClose" style="color:var(--ink);border-color:var(--ink)">離開</button></div>`);
+    document.querySelectorAll('[data-buy]').forEach(b => (b.onclick = () => {
+      const it = ITEMS[+b.dataset.buy];
+      if (S.gold < it.price) return;
+      S.gold -= it.price;
+      S.items.push({ ...it, id: nextId++, kind: 'item' });
+      log(`你在市集買下${it.name}。`);
+      save();
+      render();
+      showShop();
+    }));
+    $('btnClose').onclick = hideModal;
+  }
+
+  function showHelp() {
+    showModal(`<h3>玩法說明</h3><ul class="help">
+      <li>每週蘇丹會賜下一張旨意：縱慾、奢靡、征服、殺戮，等級為石、銅、銀、金。七天內未完成就會被處決，撐過八週即倖存。</li>
+      <li>把人物、金幣、物品卡拖進儀式的卡槽（或先點卡牌再點卡槽），湊齊必要的卡槽後按「開始儀式」。點已放入的卡槽可取回卡牌。</li>
+      <li>儀式需要數天才會完成，期間卡牌被鎖住。每天結束時，完成的儀式會擲骰結算。</li>
+      <li>判定：參與人物對應屬性的總和、特性加成、物品加成就是骰子數，每顆骰子一半機率成功。</li>
+      <li>門客每天要付俸祿，付不出來就會離開。「忠誠」的人不收俸祿。</li>
+      <li>城中事件會串成支線：維齊爾的陰謀、公主的出逃、地下反抗軍、星盤之謎。結局不只一種。</li>
+    </ul><div class="btns"><button id="btnClose">開始</button></div>`);
+    $('btnClose').onclick = () => { hideModal(); try { localStorage.setItem('sultan.seenHelp2', '1'); } catch (e) {} };
+  }
+
+  function save() { try { localStorage.setItem('sultan.save2', JSON.stringify({ S, nextId })); } catch (e) {} }
   function load() {
     try {
-      const d = JSON.parse(localStorage.getItem('sultan.save'));
+      const d = JSON.parse(localStorage.getItem('sultan.save2'));
       if (d && d.S && !d.S.over) {
-        S = Object.assign({ events: [], queue: [], flags: {}, pardon: 0 }, d.S);
+        S = d.S;
         nextId = d.nextId;
+        S.items.forEach(it => Object.assign(it, ITEMS.find(x => x.name === it.name) || {}));
         return true;
       }
     } catch (e) {}
@@ -876,12 +1105,15 @@
   }
 
   $('btnEnd').onclick = endDay;
-  $('lnkHelp').onclick = e => { e.preventDefault(); $('helpbox').classList.add('show'); };
-  $('btnHelpClose').onclick = () => $('helpbox').classList.remove('show');
+  $('lnkHelp').onclick = e => { e.preventDefault(); showHelp(); };
+  $('lnkShop').onclick = e => { e.preventDefault(); showShop(); };
   $('lnkRestart').onclick = e => { e.preventDefault(); if (confirm('確定要重新開始嗎？')) newGame(); };
 
   if (load()) render();
-  else { newGame(); $('helpbox').classList.add('show'); }
+  else newGame();
+  let seenHelp = false;
+  try { seenHelp = !!localStorage.getItem('sultan.seenHelp2'); } catch (e) {}
+  if (!seenHelp) showHelp();
 })();
 </script>
 </body>
